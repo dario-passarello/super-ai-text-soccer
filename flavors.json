@@ -1,0 +1,57 @@
+{
+    "referees": [
+        "Giovanni Rubato",
+        "Yassim Parziale",
+        "Mr. Bizantine Consesus",
+        "Cartellino Rossi",
+        "Caparezza",
+        "Ciro Esposito"
+    ],
+    "stadiums": [
+        {
+            "prefix": "in una",
+            "name": "Stradina a fondo cieco",
+            "capacity": 15
+        },
+        {
+            "prefix": "nel",
+            "name": "Terrazzo di Casa Paso",
+            "capacity": 3
+        },
+        {
+            "prefix": "nella",
+            "name": "Nemiex Arena",
+            "capacity": 500
+        },
+        {
+            "prefix": "allo",
+            "name": "Stadio Arechi",
+            "capacity": 31000
+        },
+        {
+            "prefix": "nel",
+            "name": "Server di Forgiacraft IV",
+            "capacity": 20
+        },
+        {
+            "prefix": "allo",
+            "name": "Stadio Comunale di Nocera Intermedia",
+            "capacity": 6900
+        },
+        {
+            "prefix": "allo",
+            "name": "Stadio Comunale di Mazzate sul Mincio",
+            "capacity": 900
+        },
+        {
+            "prefix": "allo",
+            "name": "Stadio Comunale di Gravina",
+            "capacity": 9000
+        },
+        {
+            "prefix": "all'",
+            "name": "Arena Politecnica federale di Zurigo",
+            "capacity": 10000
+        }
+    ]
+}
