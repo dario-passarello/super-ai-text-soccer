@@ -46,29 +46,20 @@ class CLIDisplay:
 
         if last_action is None:
             return [header]
+        
+        team_1 = self.match.get_team_1()
+        team_2 = self.match.get_team_2()
 
-        other_action_parts = []
-        atk_team, def_team = last_action.get_atk_def_teams()
-        for part in last_action.action_parts[:-1]:
-            for phrase in part.phrases:
-                other_action_parts.append(
-                    format_phrase(phrase, atk_team, def_team, part.assignments)
-                )
-        other_action_string = "\n".join(other_action_parts)
+        team_atk = team_1 if last_action.team_atk_id == 0 else team_2
+        team_def = team_2 if last_action.team_atk_id == 0 else team_1
 
-        curr_action_parts = []
-        last_part = last_action.action_parts[-1]
-        print(last_part.phrases)
+        formatted_phrases : list[str] = []
 
-        for phrase in last_part.phrases:
-            curr_action_parts.append(
-                format_phrase(phrase, atk_team, def_team, last_part.assignments)
-            )
-        return [
-            header + other_action_string + "\n" + "\n".join(curr_action_parts[: i + 1])
-            for i in range(len(curr_action_parts))
-        ]
+        for phrase in last_action.sentences:
+            formatted_phrases.append(format_phrase(phrase, team_atk, team_def, last_action.get_all_assigments()))
 
+
+        return [header + '\n'.join(formatted_phrases[:i + 1]) for i in range(len(formatted_phrases))]
 
 class CLIController:
 

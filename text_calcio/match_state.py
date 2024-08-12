@@ -3,156 +3,110 @@ from __future__ import annotations
 from dataclasses import dataclass
 from enum import Enum
 import random
-from typing import Literal, Mapping, Optional
+from typing import Literal, Optional
 
 import numpy as np
-from termcolor import colored
 
+from text_calcio.ai import ActionGenerator, find_invalid_keys
 from text_calcio.stadium import Stadium
 from text_calcio.team import Team
 
 
 @dataclass
-class ActionPart:
-    class Type(Enum):
-
-        def __init__(self, name):
-            self.ident: str = name
-
-        INITIAL = "initial"
-        CONTINUE = "continue"
-        GOAL = "goal"
-        NO_GOAL = "no_goal"
-
-    action: Action
-    event_type: Type
-    phrases: list[str]
-    assignments: Mapping[str, str]
-
-    def is_final_part(self):
-        return self.event_type in [ActionPart.Type.GOAL, ActionPart.Type.NO_GOAL]
-
-    def get_curr_atk(self):
-        return self.assignments["atk_curr"]
-
-    def get_next_atk(self):
-        return self.assignments["atk_next"]
-
-
 class Action:
+    team_atk_id: Literal[0, 1]
+    phase: MatchState.Phase
+    minute: int
+    type : Literal["goal", "no_goal", "penalty"]
+    goal_player: Optional[str]
+    assist_player: Optional[str]
+    action_mvp: Optional[str]
+    action_lvp: Optional[str]
+    sentences: list[str]
+    player_assigments : dict[str, str]
+    support_assigments : dict[str, str]
 
-    def __init__(self, match: MatchState, team_atk_id: Literal[0, 1]):
-        self.match = match
-        self.team_atk_id = team_atk_id
-        self.phase = match.curr_phase
-        self.minute = match.curr_minute
-        self.goal_player = None
-        self.action_parts: list[ActionPart] = []
+    def __post_init__(self):
+        self.validate()
 
     def is_goal(self) -> bool:
         return self.goal_player is not None
+    
+    def validate(self) -> None:
+        if self.type == "goal" and self.goal_player is None:
+            raise ValueError('Action is type goal but no goal_player specified')
+        for i, sentence in enumerate(self.sentences):
+            inv_keys = find_invalid_keys(sentence, set(self.get_all_assigments().keys()))
+            if len(inv_keys) > 0:
+                raise ValueError(f'In sentence {i} invalid keys were found: {', '.join(inv_keys)}. Sentence: {sentence}')
+        
+        valid_player_placeholders = ['{' + role + '}' for role in self.player_assigments.keys()]
 
-    def is_concluded(self) -> bool:
-        return len(self.action_parts) > 0 and self.action_parts[-1].is_final_part()
+        if self.goal_player is not None and not self.goal_player in valid_player_placeholders:
+            raise ValueError(f"Invalid goal_player placeholder: {self.goal_player}")
+        if self.assist_player is not None and self.assist_player not in valid_player_placeholders:
+            raise ValueError(f"Invalid assist_player placeholder: {self.assist_player}")
+        if self.action_mvp is not None and self.action_mvp not in valid_player_placeholders:
+            raise ValueError(f"Invalid action_mvp placeholder: {self.action_mvp}")
+        if self.action_lvp is not None and self.action_lvp not in valid_player_placeholders:
+            raise ValueError(f"Invalid action_lvp placeholder: {self.action_lvp}")
+                                    
 
-    def get_atk_def_teams(self) -> tuple[Team, Team]:
-        atk_team = self.match.teams[self.team_atk_id]
-        def_team_id = 1 - self.team_atk_id
-        def_team = self.match.teams[def_team_id]
-        return atk_team, def_team
 
-    def get_curr_conclusion_probability(self):
-        if len(self.action_parts) < 2:
-            return 0.0
-        else:
-            return min(0.8, len(self.action_parts) / 15)
+    def get_all_assigments(self):
+        return {
+            **self.player_assigments,
+            **self.support_assigments
+        }
 
-    def create_random_phrase(
-        self, group: Literal["initial", "continue", "goal", "no_goal", "penalty"]
+    @staticmethod
+    def create(
+        match: MatchState,
+        atk_team_id: Literal[0, 1],
+        action_type: Literal["goal", "no_goal", "penalty"],
+        is_var: bool,
     ):
-        chosen_sequence = random.choice(self.match.phrases[group])
-        final_sequence: list[str] = []
-        for alternatives in chosen_sequence:
-            chosen_alternative = random.choice(alternatives)
-            if len(chosen_alternative) > 0:
-                final_sequence.append(chosen_alternative)
-        return final_sequence
 
-    def continue_action(self):
+        atk_team = match.teams[atk_team_id]
+        def_team = match.teams[1 - atk_team_id]
 
-        assert (
-            not self.is_concluded()
-        ), "Action is concluded but continuation was requested"
+        # atk_player_order = atk_team.random_order(no_goalie=True)
+        # def_player_order = def_team.random_order(no_goalie=True)
 
-        team_atk, team_def = self.get_atk_def_teams()
+        player_assignments = {
+            **{f'atk_{i}' : atk_team.players[i] for i in range(1, len(atk_team))},
+            "atk_goalie": atk_team.get_goalkeeper(),
+            **{f'def_{i}' : def_team.players[i] for i in range(1, len(def_team))},
+            "def_goalie": def_team.get_goalkeeper(),
+        }
 
-        if len(self.action_parts) == 0:
-            phrase = self.create_random_phrase("initial")
-            atk_player_order = team_atk.random_order(no_goalie=True)
-            def_player_order = team_def.random_order(no_goalie=True)
-            player_assignment = {
-                "atk_curr": atk_player_order[0],
-                "atk_next": atk_player_order[1],
-                "atk_1": atk_player_order[2],
-                "atk_2": atk_player_order[3],
-                "atk_goalie": team_atk.get_goalkeeper(),
-                "def_1": def_player_order[0],
-                "def_2": def_player_order[1],
-                "def_3": def_player_order[2],
-                "def_4": def_player_order[3],
-                "def_goalie": team_def.get_goalkeeper(),
-                "referee": self.match.referee,
-                "stadium": self.match.stadium.name,
-                "stadium_prefix": self.match.stadium.prefix,
-                "stadium_capacity": self.match.stadium.capacity
-            }
-            self.action_parts.append(
-                ActionPart(self, ActionPart.Type.INITIAL, phrase, player_assignment)
-            )
-        else:
-            conclude = np.random.random() < self.get_curr_conclusion_probability()
-            goal = np.random.random() < 0.3
+        support_assigments = {
+            "referee": match.referee,
+            "stadium": match.stadium.name,
+            "atk_team_name": atk_team.familiar_name,
+            "def_team_name": def_team.familiar_name,
+        }
 
-            if conclude:
-                if goal:
-                    phrase_type = "goal"
-                    action_type = ActionPart.Type.GOAL
-                else:
-                    phrase_type = "no_goal"
-                    action_type = ActionPart.Type.NO_GOAL
-            else:
-                phrase_type = "continue"
-                action_type = ActionPart.Type.CONTINUE
+        action_response = match.action_generator.generate(action_type, is_var)
 
-            curr_atk = self.action_parts[-1].get_next_atk()
-            phrase = self.create_random_phrase(phrase_type)
-            atk_player_order = team_atk.random_order(
-                no_goalie=True, exclude_also=[curr_atk]
-            )
-            def_player_order = team_def.random_order(no_goalie=True)
-            player_assignment = {
-                "atk_curr": curr_atk,
-                "atk_next": atk_player_order[0],
-                "atk_1": atk_player_order[1],
-                "atk_2": atk_player_order[2],
-                "atk_goalie": team_atk.get_goalkeeper(),
-                "def_1": def_player_order[0],
-                "def_2": def_player_order[1],
-                "def_3": def_player_order[2],
-                "def_4": def_player_order[3],
-                "def_goalie": team_def.get_goalkeeper(),
-                "referee": self.match.referee,
-                "stadium": self.match.stadium.name,
-                "stadium_prefix": self.match.stadium.prefix,
-                "stadium_capacity": self.match.stadium.capacity
-            }
-            if conclude and goal:
-                self.goal_player = player_assignment["atk_curr"]
+        goal_player = action_response.scorer_player
+        assist_player = action_response.assist_player
+        mvp = action_response.best_player
+        lvp = action_response.worst_player
 
-            self.action_parts.append(
-                ActionPart(self, action_type, phrase, player_assignment)
-            )
-
+        return Action(
+            atk_team_id,
+            match.curr_phase,
+            match.curr_minute,
+            action_type,
+            goal_player,
+            assist_player,
+            mvp,
+            lvp,
+            action_response.phrases,
+            player_assignments,
+            support_assigments
+        )
 
 class MatchState:
     class Phase(Enum):
@@ -173,6 +127,7 @@ class MatchState:
         phrases: dict[str, list[list[list[str]]]],
         stadium: Stadium,
         referee: str,
+        action_generator: ActionGenerator,
     ):
         self.teams = (team_1, team_2)
         self.curr_phase: MatchState.Phase = MatchState.Phase.FIRST_HALF
@@ -181,13 +136,7 @@ class MatchState:
         self.stadium = stadium
         self.referee = referee
         self.actions: list[Action] = []
-        self.observers = []
-
-    def add_observer(self, observer):
-        self.observers.append(observer)
-
-    def remove_observer(self, observer):
-        self.observers.remove(observer)
+        self.action_generator = action_generator
 
     def get_team_1(self):
         return self.teams[0]
@@ -220,45 +169,25 @@ class MatchState:
     def get_other_actions(self) -> list[Action]:
         if len(self.actions) < 1:
             return []
-
         return self.actions[:-1]
 
-    def is_last_action_concluded(self):
-        if len(self.actions) == 0:
-            return True
-        return self.actions[-1].is_concluded()
-
-    def on_event(self, event: str):
-        for obs in self.observers:
-            obs.on_event(event, self)
-
     def next(self):
-        if self.is_last_action_concluded():
-            self.curr_minute += 1
-            if self.curr_minute >= self.curr_phase.duration_minutes:
-                if self.curr_phase == MatchState.Phase.FIRST_HALF:
-                    self.curr_minute = 0
-                    self.curr_phase = MatchState.Phase.SECOND_HALF
-                else:
-                    self.on_event("finish")
-
-            else:
-                do_action = np.random.random() < 0.3
-                if do_action:
-                    atk_team = 1 if np.random.random() <= 0.5 else 0
-                    self.actions.append(Action(self, atk_team))
-                    curr_action = self.actions[-1]
-                    curr_action.continue_action()
-                    self.on_event("update")
-
+        self.curr_minute += 1
+        if self.curr_minute > self.curr_phase.duration_minutes:
+            if self.curr_phase == MatchState.Phase.FIRST_HALF:
+                self.curr_minute = 0
+                self.curr_phase = MatchState.Phase.SECOND_HALF
         else:
-            curr_action = self.actions[-1]
-            curr_action.continue_action()
-            self.on_event("update")
+            do_action = np.random.random() < 0.20
+            if do_action:
+                atk_team = 1 if np.random.random() <= 0.5 else 0
+                result, = random.choices(['goal', 'no_goal'], [20, 80], k=1)
+                assert result == 'goal' or result == 'no_goal'
+                var = np.random.random() < 0.1
+                self.actions.append(Action.create(self, atk_team, result, var))
 
     def is_match_finised(self):
         return (
-            self.is_last_action_concluded()
-            and self.curr_minute >= self.curr_phase.duration_minutes
+            self.curr_minute > self.curr_phase.duration_minutes
             and self.curr_phase == MatchState.Phase.SECOND_HALF
         )
