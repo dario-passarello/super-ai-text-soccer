@@ -1,15 +1,26 @@
-from typing import Mapping
+from __future__ import annotations
 
+from dataclasses import dataclass
+from typing import Literal, Mapping, Optional
+
+import numpy as np
 from termcolor import colored
-from text_calcio.match_state import MatchState
+from text_calcio.match_state import ALL_PENALTY_DIRECTIONS, MatchState, Penalty, PenaltyDirection
 from text_calcio.team import Team
+
+from aioconsole import ainput
 
 CLEAR_CHAR = "\033c"
 
 
-class CLIDisplay:
 
-    def __init__(self, match: MatchState) -> None:
+class CLIDisplay:
+    @dataclass
+    class Config:
+        pass
+
+    def __init__(self, match: MatchState, config : Optional[CLIDisplay.Config] = None) -> None:
+        self.config = config or CLIDisplay.Config()
         self.match = match
         self.phrase_counter = 0
 
@@ -29,7 +40,7 @@ class CLIDisplay:
 
         t1 = self.match.get_team_1()
         t2 = self.match.get_team_2()
-        score_t1, score_t2 = self.match.get_current_score()
+        score_t1, score_t2 = self.match.get_no_spoiler_score()
 
         return f"{t1.abbr} {score_t1} - {score_t2} {t2.abbr}"
 
@@ -61,20 +72,156 @@ class CLIDisplay:
 
         return [header + '\n'.join(formatted_phrases[:i + 1]) for i in range(len(formatted_phrases))]
 
-class CLIController:
+    async def penalty_interaction(self) -> tuple[tuple[str, PenaltyDirection], tuple[str , PenaltyDirection]]:
+        last_action = self.match.get_current_action()
+        if last_action is None:
+            raise RuntimeError('No penalty found')
+        assigments = last_action.get_all_assigments()
+        team_1 = self.match.get_team_1()
+        team_2 = self.match.get_team_2()
 
-    def __init__(self, match: MatchState) -> None:
+        team_atk = team_1 if last_action.team_atk_id == 0 else team_2
+        team_def = team_2 if last_action.team_atk_id == 0 else team_1
+
+        atk_assigments = list(last_action.get_atk_players_assigments().items())
+
+        soccer_goal = """
+._____________.
+|(1)  (3)  (5)|
+|             |    ???
+|             |  (0) ???
+|(2)  (4)  (6)|    ???
+"""     
+
+        direction_names = ['Top Left corner', 'Top Left on the ground', 'Center below crossbar', 'Center on the ground', 'Top Right corner', 'Right on the ground']
+
+        position_text = '\n'.join(['0 - Random'] + [f'{i + 1} - {position}' for i, position in enumerate(direction_names)])
+
+        q0_remain = True
+        role, kicker_name, kicker_placeholder = None, None, None
+
+        print(CLEAR_CHAR)
+        while q0_remain:
+            print(assigments)
+            print(format_phrase('A penality was awarded to {atk_team_name} kicks the penalty. Who is going to kick it?', team_atk, team_def, assigments))
+            player_list = '\n'.join(['0 - Random'] + [f'{i + 1} - {name}' for i, (role, name) in enumerate(atk_assigments)])
+            print(player_list)
+            q0_choice = await ainput('> ')
+            try:
+                q0_int = int(q0_choice)
+                if not 0 <= q0_int <= len(team_atk.players):
+                    raise ValueError(f'Number must be between 0 and {len(team_atk.players)}')
+                if q0_int == 0:
+                    kicker_idx = np.random.randint(0, len(team_atk.players) - 1) 
+                else:          
+                    kicker_idx = q0_int - 1
+                role, kicker_name = atk_assigments[kicker_idx]
+                kicker_placeholder = '{' + role + '}'
+                await ainput(f'You chose {kicker_name} to kick the penalty')
+                q0_remain = False
+
+            except ValueError:
+                print(CLEAR_CHAR)
+        assert kicker_name is not None and kicker_placeholder is not None
+
+        print(CLEAR_CHAR)
+        await ainput(format_phrase('Now all the players and supporter of {def_team_name} must close their eyes or look away from the screen.', team_atk, team_def, assigments))
+        print(CLEAR_CHAR)
+
+
+        kick_direction_name, kick_direction_id = None, None
+        q1_remain = True
+        while q1_remain:
+            print(soccer_goal)
+            print()
+            print(position_text)
+            print()
+            print(format_phrase(f'{kicker_placeholder}, where are you kicking the ball?', team_atk, team_def, assigments))
+            q1_choice = await ainput('> ')
+            try:
+                q1_int = int(q1_choice)
+                if not 0 <= q1_int <= len(direction_names):
+                    raise ValueError(f'Number must be between 0 and {len(direction_names)}')
+                if q1_int == 0:
+                    kick_direction_index = np.random.randint(0, len(direction_names) - 1) 
+                else:          
+                    kick_direction_index = q1_int - 1
+                kick_direction_name = direction_names[kick_direction_index]
+                kick_direction_id = ALL_PENALTY_DIRECTIONS[kick_direction_index]
+                await ainput(format_phrase(f'{kicker_placeholder} chose to kick the ball to {kick_direction_name}', team_atk, team_def, assigments))
+                q1_remain = False
+
+            except ValueError:
+                await ainput('Invalid answer.')
+                print(CLEAR_CHAR)
+
+        print(CLEAR_CHAR)
+        await ainput('Everyone can look again at the screen')
+        print(CLEAR_CHAR)
+        await ainput(format_phrase('Now all the players and supporter of {atk_team_name} must close their eyes or look away from the screen.', team_atk, team_def, assigments))
+        print(CLEAR_CHAR)
+
+        def_goalie = assigments['def_goalie']
+
+        save_direction_name, save_direction_id = None, None
+        q2_remain = True
+        while q2_remain:
+            print(soccer_goal)
+            print()
+            print(position_text)
+            print()
+            print(format_phrase('{def_goalie} where are you diving?', team_atk, team_def, assigments))
+            q2_choice = await ainput('> ')
+            try:
+                q2_int = int(q2_choice)
+                if not 0 <= q2_int <= len(direction_names):
+                    raise ValueError(f'Number must be between 0 and {len(direction_names)}')
+                if q2_int == 0:
+                    save_position_idx = np.random.randint(0, len(direction_names) - 1) 
+                else:          
+                    save_position_idx = q2_int - 1
+                save_direction_name = direction_names[save_position_idx]
+                save_direction_id = ALL_PENALTY_DIRECTIONS[save_position_idx]
+                await ainput(format_phrase(f'{{def_goalie}} chose to dive {save_direction_name}', team_atk, team_def, assigments))
+                q2_remain = False
+
+            except ValueError:
+                await ainput('Invalid answer.')
+                print(CLEAR_CHAR)
+
+        print(CLEAR_CHAR)
+        print('Everyone can look again at the screen')
+        await ainput('Narration resuming... GOOD LUCK')
+        print(CLEAR_CHAR)
+
+        assert save_direction_id is not None
+        assert kick_direction_id is not None
+        return (kicker_placeholder, kick_direction_id), ('{def_goalie}', save_direction_id)
+class CLIController:
+    @dataclass
+    class Config:
+        penalty_mode : Literal['always_auto', 'always_player'] = 'always_player'
+    
+    def __init__(self, match: MatchState, config : Optional[CLIController.Config] = None) -> None:
+        self.config = config or CLIController.Config()
         self.match = match
         self.display = CLIDisplay(match)
 
-    def run(self):
-        while not self.match.is_match_finised():
+    async def run(self):
+        await self.match.prefetch_blueprints(3)
+        while not self.match.is_match_finished():
 
             strings = self.display.display()
             for string in strings:
                 print(string)
-                x = input()
-            self.match.next()
+                x = await ainput()
+            if self.match.is_penalty_pending():
+                (kicker, kick_pos), (goalie, save_pos) = await self.display.penalty_interaction()
+                penality = Penalty.create_player_kicked_penalty(kicker, goalie, kick_pos, save_pos)
+                self.match.kick_penalty(penality)
+            print('Loading ...')
+            await self.match.next()
+            print(CLEAR_CHAR)
 
 
 def format_phrase(
