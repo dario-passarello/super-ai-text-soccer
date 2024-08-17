@@ -1,17 +1,18 @@
+
 from __future__ import annotations
 
 from dataclasses import dataclass
-from typing import Literal, Mapping, Optional
-
+from typing import Mapping, Optional
+from aioconsole import ainput
 import numpy as np
 from termcolor import colored
-from text_calcio.match_state import ALL_PENALTY_DIRECTIONS, MatchState, Penalty, PenaltyDirection
-from text_calcio.team import Team
 
-from aioconsole import ainput
+from text_calcio.state.match import Match
+from text_calcio.state.penalty import ALL_PENALTY_DIRECTIONS, PenaltyDirection
+from text_calcio.state.team import Team
+
 
 CLEAR_CHAR = "\033c"
-
 
 
 class CLIDisplay:
@@ -19,21 +20,21 @@ class CLIDisplay:
     class Config:
         pass
 
-    def __init__(self, match: MatchState, config : Optional[CLIDisplay.Config] = None) -> None:
+    def __init__(self, match: Match, config : Optional[CLIDisplay.Config] = None) -> None:
         self.config = config or CLIDisplay.Config()
         self.match = match
         self.phrase_counter = 0
 
     def display_minute(self):
-        if self.match.curr_phase == MatchState.Phase.FIRST_HALF:
+        if self.match.curr_phase == Match.Phase.FIRST_HALF:
             return f"{self.match.curr_minute}' (1T)"
-        elif self.match.curr_phase == MatchState.Phase.SECOND_HALF:
+        elif self.match.curr_phase == Match.Phase.SECOND_HALF:
             return f"{self.match.curr_minute + 45}' (2T)"
-        elif self.match.curr_phase == MatchState.Phase.FIRST_ADD_TIME:
+        elif self.match.curr_phase == Match.Phase.FIRST_ADD_TIME:
             return f"{self.match.curr_minute + 90}' (1TS)"
-        elif self.match.curr_phase == MatchState.Phase.SECOND_ADD_TIME:
+        elif self.match.curr_phase == Match.Phase.SECOND_ADD_TIME:
             return f"{self.match.curr_minute + 105}' (2TS)"
-        elif self.match.curr_phase == MatchState.Phase.SECOND_ADD_TIME:
+        elif self.match.curr_phase == Match.Phase.SECOND_ADD_TIME:
             return f"Penalties"
 
     def display_score(self):
@@ -197,31 +198,7 @@ class CLIDisplay:
         assert save_direction_id is not None
         assert kick_direction_id is not None
         return (kicker_placeholder, kick_direction_id), ('{def_goalie}', save_direction_id)
-class CLIController:
-    @dataclass
-    class Config:
-        penalty_mode : Literal['always_auto', 'always_player'] = 'always_player'
-    
-    def __init__(self, match: MatchState, config : Optional[CLIController.Config] = None) -> None:
-        self.config = config or CLIController.Config()
-        self.match = match
-        self.display = CLIDisplay(match)
 
-    async def run(self):
-        await self.match.prefetch_blueprints(3)
-        while not self.match.is_match_finished():
-
-            strings = self.display.display()
-            for string in strings:
-                print(string)
-                x = await ainput()
-            if self.match.is_penalty_pending():
-                (kicker, kick_pos), (goalie, save_pos) = await self.display.penalty_interaction()
-                penality = Penalty.create_player_kicked_penalty(kicker, goalie, kick_pos, save_pos)
-                self.match.kick_penalty(penality)
-            print('Loading ...')
-            await self.match.next()
-            print(CLEAR_CHAR)
 
 
 def format_phrase(

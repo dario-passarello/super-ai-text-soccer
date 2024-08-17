@@ -1,11 +1,6 @@
-from abc import ABC, abstractmethod
-import asyncio
-from dataclasses import dataclass
-from typing import Container, Literal, Optional
-from openai import AsyncOpenAI, BaseModel, OpenAI
-import string
+from typing import Literal
 
-from text_calcio.action import ActionBlueprint, ActionType
+from text_calcio.loaders.action import ActionRequest
 
 
 AI_SYSTEM_PROMPT_BEGIN = """
@@ -92,7 +87,10 @@ Remember that this narration that you are generating is part of a game, you do n
 don't make assumptions on information that you do not have (such as the score or how well a player is going)
 """
 
-def build_prompt(outcome : Literal["goal", "own_goal", "no_goal", "penalty"], var_check : bool):
+def build_prompt(action_request : ActionRequest) -> str:
+    outcome = action_request.action_type
+    var_check = action_request.use_var
+
     prompt = AI_SYSTEM_PROMPT_BEGIN
     prompt += '\n'
     if outcome == "goal" and var_check:
@@ -113,92 +111,3 @@ def build_prompt(outcome : Literal["goal", "own_goal", "no_goal", "penalty"], va
     prompt += CONCLUDING_PROMPT
 
     return prompt
-
-
-class PlayerEvaluation(BaseModel):
-    player_placeholder : str
-    evaluation : int
-
-    class Config:
-        extra = 'forbid'
-
-  
-class ActionResponse(BaseModel):
-    phrases : list[str]
-    player_evaluation : list[PlayerEvaluation]
-    scorer_player : Optional[str]
-    assist_player : Optional[str]
-
-    class Config:
-        extra = 'forbid'
-
-
-class AsyncActionGenerator(ABC):
-    
-    @abstractmethod
-    async def generate(self, action_ending : ActionType, var_check : bool) -> ActionBlueprint:
-        pass
-
-class AsyncAIActionGenerator(AsyncActionGenerator):
-    def __init__(self, ai_client : AsyncOpenAI) -> None:
-        self.ai_client = ai_client
-
-    async def generate(self, action_ending : ActionType, var_check : bool) -> ActionBlueprint:
-        prompt = build_prompt(action_ending, var_check)
-        result = await self.ai_client.beta.chat.completions.parse(
-            model="gpt-4o-2024-08-06",
-            messages=[
-                {"role": "user", "content": prompt}
-            ],
-            response_format=ActionResponse,
-        )
-
-        api_response = result.choices[0].message
-        if api_response.refusal:
-            raise RuntimeError(f'API response refused: {api_response.refusal}')
-        
-        action_response = api_response.parsed
-
-        if action_response is None:        
-            raise RuntimeError(f'Cannot parse API response')
-
-        evaluations = {
-            evl.player_placeholder: evl.evaluation for evl in action_response.player_evaluation
-        }
-        action_schema = ActionBlueprint(
-            action_ending, var_check, action_response.phrases, evaluations, action_response.scorer_player, action_response.assist_player
-        )
-        return action_schema
-
-class AsyncActionProducer():
-
-    MAX_RETRIES = 3
-
-    def __init__(self, generator : AsyncActionGenerator, queue : asyncio.Queue[ActionBlueprint], demand_queue : asyncio.Queue[list[tuple[ActionType, bool]]]) -> None:
-        self.generator = generator
-        self.queue = queue
-        self.demand_queue = demand_queue
-
-    async def produce(self):
-        while True:
-            desired_items = await self.demand_queue.get()
-            if desired_items is None:
-                break
-
-            for action_type, is_var in desired_items:
-                for attempt in range(self.MAX_RETRIES):
-                    try:
-                        generated_blueprint = await self.generator.generate(action_type, is_var)
-                        generated_blueprint.validate()
-                        await self.queue.put(generated_blueprint)
-                        break
-                    except Exception as e:
-                        if attempt < self.MAX_RETRIES - 1:
-                            pass
-                        else:
-                            print("Max retries reached. Operation failed.")
-                            raise  # Re-raise the exception if max retries reached
-
-
-
-

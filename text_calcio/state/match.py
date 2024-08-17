@@ -8,67 +8,22 @@ from typing import Literal, Optional
 
 import numpy as np
 
-from text_calcio.action import ActionBlueprint
-from text_calcio.stadium import Stadium
-from text_calcio.team import Team
+from text_calcio.loaders.action import ActionBlueprint, ActionRequest
+from text_calcio.loaders.action_provider import AsyncActionProvider
+from text_calcio.state.penalty import Penalty
+from text_calcio.state.stadium import Stadium
+from text_calcio.state.team import Team
 
 
-
-PenaltyDirection = Literal['left_top', 'left_low', 'center_top', 'center_low', 'right_top', 'right_low']
-ALL_PENALTY_DIRECTIONS : list[PenaltyDirection] = ['left_top', 'left_low', 'center_top', 'center_low', 'right_top', 'right_low']
-
-@dataclass
-class Penalty:
-    player_kicking : str
-    goal_keeper : str
-    kick_direction : PenaltyDirection
-    dive_direction : PenaltyDirection
-    is_goal : bool
-
-    @staticmethod
-    def calculate_is_goal(kick_direction : PenaltyDirection, dive_direction : PenaltyDirection):
-        x_kick, y_kick = kick_direction.split('_')
-        x_dive, y_dive = dive_direction.split('_')
-        if kick_direction == dive_direction:
-            return False
-        if x_kick != x_dive:
-            return True
-        else:
-            return np.random.random() < 0.5
-        
-    @staticmethod
-    def create_player_kicked_penalty(player_kicking : str, goal_keeper: str, kick_direction : PenaltyDirection, dive_direction : PenaltyDirection):
-        is_goal = Penalty.calculate_is_goal(kick_direction, dive_direction)
-
-        return Penalty(
-            player_kicking,
-            goal_keeper,
-            kick_direction,
-            dive_direction,
-            is_goal
-        )
-
-    @staticmethod
-    def create_auto_penalty(player_kicking : str, goal_keeper: str):
-        kick_direction : PenaltyDirection = random.choice(['left_top', 'left_low', 'center_top', 'center_low', 'right_top', 'right_low'])
-        dive_direction : PenaltyDirection = random.choice(['left_top', 'left_low', 'center_top', 'center_low', 'right_top', 'right_low'])
-        is_goal = Penalty.calculate_is_goal(kick_direction, dive_direction)
-
-        return Penalty(
-            player_kicking,
-            goal_keeper,
-            kick_direction,
-            dive_direction,
-            is_goal
-        )
+ActionType = Literal["goal", "no_goal", "penalty", "own_goal"]
 
 
 @dataclass
 class Action:
     team_atk_id: Literal[0, 1]
-    phase: MatchState.Phase
+    phase: Match.Phase
     minute: int
-    type : Literal["goal", "no_goal", "penalty", "own_goal"]
+    type : ActionType
     goal_player: Optional[str]
     assist_player: Optional[str]
     players_evaluation: dict[str, int]
@@ -89,7 +44,7 @@ class Action:
 
 
     def is_goal(self) -> bool:
-        return self.goal_player is not None and 'atk_' in self.goal_player
+        return self.goal_player is not None
     
     def is_own_goal(self) -> bool:
         return self.goal_player is not None and 'def_' in self.goal_player
@@ -124,7 +79,7 @@ class Action:
     @staticmethod
     def create(
         action_response : ActionBlueprint,
-        phase: MatchState.Phase,
+        phase: Match.Phase,
         minute: int,
         atk_team_id : Literal[0, 1],
         teams : tuple[Team, Team],
@@ -168,13 +123,32 @@ class Action:
             support_assigments
         )
 
-@dataclass
-class MatchConfig:
-    tie_breaking : Literal['allow_tie', 'extra_time_and_penalties', 'only_penalties', 'golden_goal', 'silver_goal'] = 'allow_tie'
 
 
 
-class MatchState:
+
+class Match:
+    """
+    Represents the state of a simulated footbal match.
+
+    The match is divided in phases (first half, second half, additional times, penalties),
+    each phase is divided in minutes. At every minute an Action may happen. An Action contains
+    a human readable narration of what happened, which team attacks and which defends,
+    the roles of the players and the outcome of the action (goal, no goal, own goal or penalty)
+
+    Calling the next() method of this class, advances the game clock and triggers the generation of the actions
+    that can be prefetched for perfomrance reasons.
+    At first the method extracts a random outcome of the action and then it requests the action_provider
+    to construct an action object (the creation logic is abstracted, it may be generate from AI or it can 
+    be taken from a database). The action_provider returns a detailed ActionBlueprint that is used
+    to construct the Action object tied to the Match and then added to tle list of actions.
+    """
+
+
+    @dataclass
+    class Config:
+        tie_breaking : Literal['allow_tie', 'extra_time_and_penalties', 'only_penalties', 'golden_goal', 'silver_goal'] = 'allow_tie'
+
     class Phase(Enum):
         FIRST_HALF = 0, 45
         SECOND_HALF = 1, 45
@@ -190,21 +164,19 @@ class MatchState:
         self,
         team_1: Team,
         team_2: Team,
-        phrases: dict[str, list[list[list[str]]]],
         stadium: Stadium,
         referee: str,
-        config : MatchConfig
+        action_provider : AsyncActionProvider,
+        config : Optional[Match.Config] = None
     ):
         self.teams = (team_1, team_2)
-        self.curr_phase: MatchState.Phase = MatchState.Phase.FIRST_HALF
+        self.curr_phase: Match.Phase = Match.Phase.FIRST_HALF
         self.curr_minute: int = 1
-        self.phrases: dict[str, list[list[list[str]]]] = phrases
         self.stadium = stadium
         self.referee = referee
         self.actions: list[Action] = []
-        self.config = config
-        self.blueprint_queue = asyncio.Queue()
-        self.demand_queue = asyncio.Queue()
+        self.config = config or Match.Config()
+        self.action_provider = action_provider
         self.action_configs = []
 
     def get_team_1(self):
@@ -253,25 +225,23 @@ class MatchState:
             raise RuntimeError('Penalty pending, could not advance to next action')
         self.curr_minute += 1
         if self.curr_minute > self.curr_phase.duration_minutes:
-            if self.curr_phase == MatchState.Phase.FIRST_HALF:
+            if self.curr_phase == Match.Phase.FIRST_HALF:
                 self.curr_minute = 0
-                self.curr_phase = MatchState.Phase.SECOND_HALF
+                self.curr_phase = Match.Phase.SECOND_HALF
         else:
             do_action = np.random.random() < 0.20
             if do_action:
                 await self.prefetch_blueprints()
-                blueprint = await self.blueprint_queue.get()
+                blueprint = await self.action_provider.get()
                 atk_team = 1 if np.random.random() <= 0.5 else 0
                 self.actions.append(Action.create(blueprint, self.curr_phase, self.curr_minute, atk_team, self.teams, self.referee, self.stadium))
-                self.blueprint_queue.task_done()
 
     async def prefetch_blueprints(self, n = 1):
-        demands = []
         for i in range(n):
-            action_type, = random.choices(['goal', 'no_goal', 'penalty', 'own_goal'], [20, 65, 10, 5], k=1)
+            choices : list[ActionType] = ['goal', 'no_goal', 'penalty', 'own_goal']
+            action_type, = random.choices(choices, [20, 65, 10, 5], k=1)
             var = np.random.random() < 0.1
-            demands.append((action_type, var))
-        await self.demand_queue.put(demands)
+            await self.action_provider.request(ActionRequest(action_type, var))
 
 
     def kick_penalty(self, penalty : Penalty):
@@ -284,5 +254,5 @@ class MatchState:
     def is_match_finished(self):
         return (
             self.curr_minute > self.curr_phase.duration_minutes
-            and self.curr_phase == MatchState.Phase.SECOND_HALF
+            and self.curr_phase == Match.Phase.SECOND_HALF
         )

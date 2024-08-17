@@ -2,16 +2,23 @@
 
 import asyncio
 import os
-from text_calcio.ai import AsyncAIActionGenerator, AsyncActionProducer
-from text_calcio.loader import load_flavors, load_phrases
-from text_calcio.display import CLIController
-from text_calcio.match_state import MatchConfig, MatchState
-from text_calcio.team import Team
 import random
 from openai import AsyncOpenAI, OpenAI
 from dotenv import load_dotenv
 
+from text_calcio.cli.controller import CLIController
+from text_calcio.loaders.action_provider import AsyncQueueActionProvider
+from text_calcio.loaders.ai.action_loader import AsyncAIActionLoader
+from text_calcio.loaders.flavor import load_flavors
+from text_calcio.state.match import Match
+from text_calcio.state.team import Team
+
+
+
 def main():
+    asyncio.run(execute())
+
+async def execute():
 
     load_dotenv()
 
@@ -20,13 +27,12 @@ def main():
         api_key=os.environ.get("OPENAI_API_KEY"),
     )
 
-    phrases = load_phrases()
     stadiums, referees = load_flavors()
 
     random_stadium = random.choice(stadiums)
     random_referee = random.choice(referees)
 
-    action_generator = AsyncAIActionGenerator(client)
+    action_generator = AsyncAIActionLoader(client)
 
     team_1 = Team(
         'A.C. FORGIA', 'FORGIA', 'FOR', "blue", ['Kien', 'Dani', 'Dario', 'Dav', 'Max']
@@ -36,16 +42,17 @@ def main():
         'F.C. PASTA CALCISTICA', 'PASTA', 'PAS', "red", ['Gio', 'Giammy', 'Pit', 'Stef', 'Paso']
     )
 
-    match_config = MatchConfig()
-    match = MatchState(team_1, team_2, phrases, random_stadium, random_referee, match_config)
+    with AsyncQueueActionProvider(action_generator) as provider:
+        match = Match(team_1, team_2, random_stadium, random_referee, provider)
 
 
-    controller = CLIController(match)
-    producer = AsyncActionProducer(action_generator, match.blueprint_queue, match.demand_queue)
-    asyncio.run(run_controller_producer(controller, producer))
+        controller = CLIController(match)
+        await controller.run()
 
-async def run_controller_producer(controller : CLIController, producer : AsyncActionProducer):
-    await asyncio.gather(controller.run(), producer.produce())
+
+
+
+
 
 
 if __name__ == '__main__':
