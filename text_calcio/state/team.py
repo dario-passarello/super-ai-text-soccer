@@ -10,7 +10,8 @@ class Team:
         MIDFIELD = 1
         DEFENSE = 2
 
-    name : str
+    full_name : str
+    familiar_name : str
     abbr : str
     color : str
     players : list[str]
@@ -18,6 +19,9 @@ class Team:
 
     def get_goalkeeper(self):
         return self.players[0]
+    
+    def __len__(self):
+        return len(self.players)
     
     def random_order(self, no_goalie=False, exclude_also=[]):
         if no_goalie:
