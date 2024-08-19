@@ -47,6 +47,8 @@ class TeamStats:
         else:
             ball_possesion_pct = n_attempts / len(all_actions) * 100
         all_evaluations = defaultdict(int)
+        for pl in team.players:
+            all_evaluations[pl] = 0
         for action in all_actions:
             team_role = 'atk' if action.team_atk_id == team_id else 'def'
             for placeholder, score in action.players_evaluation.items():

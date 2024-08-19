@@ -17,15 +17,11 @@ class Penalty:
     dive_direction : PenaltyDirection
     is_out : bool
     is_goal : bool
-    penalty_sentences : list[str]
 
     def __post_init__(self):
         if self.is_out and self.is_goal:
             raise ValueError("A penalty kicked out cannot be a goal")
         
-        
-
-
     @staticmethod
     def calculate_is_goal(kick_direction : PenaltyDirection, dive_direction : PenaltyDirection):
         x_kick, y_kick = kick_direction.split('_')

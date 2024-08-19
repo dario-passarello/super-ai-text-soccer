@@ -7,7 +7,7 @@ msgid ""
 msgstr ""
 "Project-Id-Version: PROJECT VERSION\n"
 "Report-Msgid-Bugs-To: EMAIL@ADDRESS\n"
-"POT-Creation-Date: 2024-08-18 21:42+0200\n"
+"POT-Creation-Date: 2024-08-19 08:45+0200\n"
 "PO-Revision-Date: 2024-08-18 21:42+0200\n"
 "Last-Translator: FULL NAME <EMAIL@ADDRESS>\n"
 "Language: it\n"
@@ -18,92 +18,112 @@ msgstr ""
 "Content-Transfer-Encoding: 8bit\n"
 "Generated-By: Babel 2.16.0\n"
 
-#: text_calcio/cli/display.py:42
+#: text_calcio/cli/display.py:47
 msgid "1st"
 msgstr "1 T"
 
-#: text_calcio/cli/display.py:45
+#: text_calcio/cli/display.py:50
 msgid "2nd"
 msgstr "2 T"
 
-#: text_calcio/cli/display.py:48
+#: text_calcio/cli/display.py:53
 msgid "1st ET"
 msgstr "1 TS"
 
-#: text_calcio/cli/display.py:51
+#: text_calcio/cli/display.py:56
 msgid "2nd ET"
 msgstr "2 TS"
 
-#: text_calcio/cli/display.py:54
+#: text_calcio/cli/display.py:59
 msgid "Shootout"
 msgstr "Rigori"
 
-#: text_calcio/cli/display.py:150
+#: text_calcio/cli/display.py:61
+msgid "Kick"
+msgstr "Tiro"
+
+#: text_calcio/cli/display.py:136 text_calcio/cli/display.py:139
+msgid "Player"
+msgstr "Giocatore"
+
+#: text_calcio/cli/display.py:136 text_calcio/cli/display.py:139
+msgid "Evaluation"
+msgstr "Valutazione"
+
+#: text_calcio/cli/display.py:136
+msgid "Change"
+msgstr "Delta"
+
+#: text_calcio/cli/display.py:191
 msgid "random"
 msgstr "a caso"
 
-#: text_calcio/cli/display.py:172
+#: text_calcio/cli/display.py:214
 msgid "top left corner"
 msgstr "incrocio dei pali a sinistra"
 
-#: text_calcio/cli/display.py:172
+#: text_calcio/cli/display.py:215
 msgid "left on the ground"
 msgstr "rasoterra a sinistra"
 
-#: text_calcio/cli/display.py:172
+#: text_calcio/cli/display.py:216
 msgid "center below crossbar"
 msgstr "centrale sotto la traversa"
 
-#: text_calcio/cli/display.py:172
+#: text_calcio/cli/display.py:217
 msgid "center on the ground"
 msgstr "centrale rasoterra"
 
-#: text_calcio/cli/display.py:172
+#: text_calcio/cli/display.py:218
 msgid "top right corner"
 msgstr "incrocio dei pali a destra"
 
-#: text_calcio/cli/display.py:172
+#: text_calcio/cli/display.py:219
 msgid "right on the ground"
 msgstr "rasoterra a destra"
 
-#: text_calcio/cli/display.py:183
+#: text_calcio/cli/display.py:236
 msgid "A penality was awarded to {atk_team_name}. Who is going to kick it?"
 msgstr "L'arbitro ha fischiato un rigore per {atk_team_name}. Chi lo calcerá?"
 
-#: text_calcio/cli/display.py:190 text_calcio/cli/display.py:224
-#: text_calcio/cli/display.py:264
+#: text_calcio/cli/display.py:254 text_calcio/cli/display.py:306
+#: text_calcio/cli/display.py:366
 msgid "Number must be between 0 and "
 msgstr "Il numero deve essere compreso tra 0 e "
 
-#: text_calcio/cli/display.py:197
+#: text_calcio/cli/display.py:262
 msgid "You chose {} to kick the penalty"
 msgstr "{} calcerá il rigore"
 
-#: text_calcio/cli/display.py:207
+#: text_calcio/cli/display.py:274
 msgid ""
 "Now all the players and supporter of {def_team_name} must close their "
 "eyes or look away from the screen."
-msgstr "Tutti i giocatori e i tifosi di {def_team_name} devono chiudere i loro occhi o smettere di guardare lo schermo."
+msgstr ""
+"Tutti i giocatori e i tifosi di {def_team_name} devono chiudere i loro "
+"occhi o smettere di guardare lo schermo."
 
-#: text_calcio/cli/display.py:219
+#: text_calcio/cli/display.py:295
 msgid "{}, where are you kicking the ball?"
 msgstr "{}, in che direzione calcerai il rigore?"
 
-#: text_calcio/cli/display.py:233 text_calcio/cli/display.py:273
+#: text_calcio/cli/display.py:318 text_calcio/cli/display.py:376
 msgid "Invalid answer."
 msgstr "Risposta non valida."
 
-#: text_calcio/cli/display.py:239 text_calcio/cli/display.py:279
+#: text_calcio/cli/display.py:324 text_calcio/cli/display.py:382
 msgid "Everyone can look again at the screen"
 msgstr "Tutti possono riprendere a guardare lo schermo"
 
-#: text_calcio/cli/display.py:243
+#: text_calcio/cli/display.py:330
 msgid ""
 "Now all the players and supporter of {atk_team_name} must close their "
 "eyes or look away from the screen."
-msgstr "Tutti i giocatori e i tifosi di {atk_team_name} devono chiudere i loro occhi o smettere di guardare lo schermo"
+msgstr ""
+"Tutti i giocatori e i tifosi di {atk_team_name} devono chiudere i loro "
+"occhi o smettere di guardare lo schermo"
 
-#: text_calcio/cli/display.py:259
+#: text_calcio/cli/display.py:355
 msgid "{def_goalie} where are you diving?"
 msgstr "{def_goalie}, in che direzione ti tufferai?"
 

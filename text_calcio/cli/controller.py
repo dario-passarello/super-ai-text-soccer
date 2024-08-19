@@ -41,7 +41,7 @@ class CLIController:
                     print(self.display.display_after_goal())
                     await ainput()
                 print(CLEAR_CHAR)
-                print(self.display.display_evalations())
+                print(self.display.display_evalations(self.match.get_current_action()))
                 await ainput()
             print(CLEAR_CHAR)
             self.display.print_display(header, [])
