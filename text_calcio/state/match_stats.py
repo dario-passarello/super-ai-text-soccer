@@ -36,32 +36,42 @@ class TeamStats:
     def create_from_match(match: Match, team_id: Literal[0, 1]):
         all_actions = match.get_all_actions_to_now()
         team = match.teams[team_id]
+
         n_attempts = sum(
             1
             for action in all_actions
             if action.team_atk_id == team_id and action.phase != Match.Phase.PENALTIES
         )
+
         score = match.get_current_score()[team_id]
+
         goals = [
-            GoalStats.create_from_action(action)
+            goal
             for action in all_actions
             if action.team_atk_id == team_id
+            and (goal := GoalStats.create_from_action(action)) is not None
         ]
-        goals = [goal for goal in goals if goal is not None]
+
         if len(all_actions) == 0:
             ball_possesion_pct = 0
         else:
             ball_possesion_pct = n_attempts / len(all_actions) * 100
+
         all_evaluations = defaultdict(int)
+
         for pl in team.players:
             all_evaluations[pl] = 0
+
         for action in all_actions:
             team_role = "atk" if action.team_atk_id == team_id else "def"
+
             for placeholder, score in action.players_evaluation.items():
                 role = placeholder.strip("{}")
                 player_name = action.player_assigments[role]
+
                 if team_role in role:
                     all_evaluations[player_name] += score
+
         return TeamStats(
             match.curr_phase,
             match.curr_minute,
@@ -90,6 +100,7 @@ class GoalStats:
         assert action.goal_player is not None and action.type != "no_goal"
 
         scorer_player = action.map_role_to_name(action.goal_player)
+
         if action.assist_player is None:
             assist_player = None
         else:

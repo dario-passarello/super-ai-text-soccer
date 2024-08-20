@@ -45,10 +45,12 @@ class Action:
     def __post_init__(self):
         if self.type == "penalty":
             self.assist_player = None
+
             if self.penalty_info is None:
                 self.goal_player = None
             else:
                 self.goal_player = self.penalty_info.player_kicking
+
         elif self.type == "own_goal":
             self.assist_player = None
 
@@ -64,6 +66,7 @@ class Action:
     def kick_penalty(self, penalty: Penalty):
         if not self.is_penalty_pending():
             raise RuntimeError("Penalty not pending")
+
         self.penalty_info = penalty
         self.assist_player = None
 
@@ -74,6 +77,7 @@ class Action:
 
     def map_role_to_name(self, role: str):
         role = role.strip("{}")
+
         return self.get_all_assigments()[role]
 
     def get_all_assigments(self):
@@ -155,6 +159,7 @@ class Match:
         tie_breaker: Literal[
             "allow_tie", "on_tie_extra_time_and_penalties", "on_tie_penalties"
         ] = "on_tie_extra_time_and_penalties"
+
         start_from_penalties: bool = False
         goal_added_time_min: float = 0.5
         goal_added_time_max: float = 1.5
@@ -173,7 +178,7 @@ class Match:
         default_action_own_goal_probability = 0.02
         default_action_penalty_probability = 0.08
 
-        default_action_var_probaility = 0.1
+        default_action_var_probability = 0.1
 
         penalties_shoot_count = 5
 
@@ -192,6 +197,7 @@ class Match:
         def __lt__(self, other):
             if not isinstance(other, Match.Phase):
                 return NotImplemented
+
             return self.id < other.id
 
     def __init__(
@@ -206,10 +212,12 @@ class Match:
         self.config = config or Match.Config()
 
         self.teams = (team_1, team_2)
+
         if self.config.start_from_penalties:
             self.curr_phase: Match.Phase = Match.Phase.PENALTIES
         else:
             self.curr_phase: Match.Phase = Match.Phase.FIRST_HALF
+
         self.curr_minute: int = 1
         self.stadium = stadium
         self.referee = referee
@@ -270,9 +278,11 @@ class Match:
         get_no_spoiler_score : Similar to this method, but omits in the score calculation the current action.
         """
         score = [0, 0]
+
         for action in self.actions:
             if action.is_goal():
                 score[action.team_atk_id] += 1
+
         return tuple(score)  # type: ignore
 
     def get_no_spoiler_score(self) -> tuple[int, int]:
@@ -295,9 +305,11 @@ class Match:
         """
         score = [0, 0]
         curr_action = self.get_current_action()
+
         for action in self.actions:
             if action.is_goal() and action is not curr_action:
                 score[action.team_atk_id] += 1
+
         return tuple(score)  # type: ignore
 
     def get_current_action(self) -> Optional[Action]:
@@ -312,15 +324,18 @@ class Match:
         for action in self.actions:
             if action.minute == self.curr_minute and action.phase == self.curr_phase:
                 return action
+
         return None
 
     def get_all_actions_to_now(self) -> list[Action]:
         actions = []
+
         for action in self.actions:
             if action.phase < self.curr_phase or (
                 action.phase == self.curr_phase and action.minute <= self.curr_minute
             ):
                 actions.append(action)
+
         return actions
 
     def is_penalty_pending(self) -> bool:
@@ -339,14 +354,18 @@ class Match:
         next : method to call if this check returns False
         """
         curr_action = self.get_current_action()
-        return curr_action is not None and curr_action.is_penalty_pending()
+
+        return curr_action and curr_action.is_penalty_pending()
 
     async def next(self) -> None:
         if self.is_penalty_pending():
             raise RuntimeError("Penalty pending, could not advance to next action")
+
         self.curr_minute += 1
+
         score_1, score_2 = self.get_current_score()
         is_tie = score_1 == score_2
+
         if self.curr_phase == Match.Phase.PENALTIES:
             # TODO This may not work in case of sudden death (tie after 5 penalties)
             # penalties shootout has completely different rules
@@ -355,10 +374,13 @@ class Match:
             penalties_remaining = max(
                 self.config.penalties_shoot_count - penalty_kick_count, 1
             )
-            curr_team_kicking = 0 if self.curr_minute % 2 == 1 else 1
+
+            curr_team_kicking = (self.curr_minute + 1) % 2
+
             # Calculate penalty win condition
             score_curr_team = score_1 if curr_team_kicking == 0 else score_2
             score_other_team = score_2 if curr_team_kicking == 0 else score_1
+
             if score_curr_team + penalties_remaining < score_other_team:
                 # If it is impossible to win
                 self.finished = True
@@ -366,6 +388,7 @@ class Match:
                 penalty_blueprint = ActionBlueprint(
                     "penalty", False, [], {}, None, None
                 )
+
                 self.actions.append(
                     Action.create_from_blueprint(
                         penalty_blueprint,
@@ -415,7 +438,6 @@ class Match:
                 # If we are in added time (recupero) increase the odds of action happening
                 # There is more competitivity
                 action_pr = self.config.added_time_action_probability
-
             elif self.curr_phase in [
                 Match.Phase.FIRST_EXTRA_TIME,
                 Match.Phase.SECOND_EXTRA_TIME,
@@ -424,28 +446,33 @@ class Match:
                 action_pr = self.config.extra_time_action_probability
             else:
                 action_pr = self.config.standard_action_probability
+
             do_action = np.random.random() < action_pr
 
             is_last_minute = (
                 self.curr_minute
                 == self.curr_phase.duration_minutes + self.get_added_time_minutes()
             )
+
             # In last minute an action happens always (suspence and drama goes brrr)
             if do_action or is_last_minute:
                 await self.prefetch_blueprints()
+
                 blueprint = await self.action_provider.get()
-                if (
-                    is_last_minute and not is_tie
-                ):  # last minute action of every half is always given to the disadnvated team
-                    # At last minute of every time let the disadvantage team try a last action
+
+                if is_last_minute and not is_tie:
+                    # Last minute action of every half is always given to the disadvantaged team
+
+                    # At last minute of every time let the disadvantaged team try a last action
                     atk_team: Literal[0, 1] = [score_1, score_2].index(
                         min([score_1, score_2])
                     )  # type: ignore
-                else:  # otherwise the two teams have the same odds to play as attackers
+                else:
+                    # otherwise the two teams have the same odds to play as attackers
                     atk_team = 1 if np.random.random() <= 0.5 else 0
-                if (
-                    self.curr_minute <= self.curr_phase.duration_minutes
-                ):  # If we are not in additional time, then increase additional times depending on actions
+
+                if self.curr_minute <= self.curr_phase.duration_minutes:
+                    # If we are not in additional time, then increase additional times depending on actions
                     if blueprint.action_type == "goal":
                         self.added_time[self.curr_phase] += np.random.uniform(
                             self.config.goal_added_time_min,
@@ -456,6 +483,7 @@ class Match:
                             self.config.penalty_added_time_min,
                             self.config.penalty_added_time_max,
                         )
+
                     if blueprint.use_var:
                         self.added_time[self.curr_phase] += np.random.uniform(
                             self.config.var_added_time_min,
@@ -477,22 +505,29 @@ class Match:
     async def prefetch_blueprints(self, n=1):
         for i in range(n):
             choices: list[ActionType] = ["goal", "no_goal", "penalty", "own_goal"]
-            probs = [
+
+            probabilities = [
                 self.config.default_action_goal_probability,
                 self.config.default_action_no_goal_probability,
                 self.config.default_action_penalty_probability,
                 self.config.default_action_own_goal_probability,
             ]
-            (action_type,) = random.choices(choices, probs, k=1)
-            var = np.random.random() < self.config.default_action_var_probaility
+
+            (action_type,) = random.choices(choices, probabilities, k=1)
+
+            var = np.random.random() < self.config.default_action_var_probability
+
             # Send the request to the provider that will fetch the blueprints used in get
             await self.action_provider.request(ActionRequest(action_type, var))
 
     def kick_penalty(self, penalty: Penalty):
         if not self.is_penalty_pending():
             raise RuntimeError("Penalty not pending")
+
         curr_action = self.get_current_action()
+
         assert curr_action is not None
+
         curr_action.kick_penalty(penalty)
 
     def is_match_finished(self):
