@@ -8,6 +8,7 @@ import numpy as np
 PenaltyDirection = Literal[
     "left_top", "left_low", "center_top", "center_low", "right_top", "right_low"
 ]
+
 ALL_PENALTY_DIRECTIONS: list[PenaltyDirection] = [
     "left_top",
     "left_low",
@@ -37,7 +38,9 @@ class Penalty:
     ):
         x_kick, y_kick = kick_direction.split("_")
         x_dive, y_dive = dive_direction.split("_")
+
         kick_error_chance = 0.1
+
         if np.random.random() < kick_error_chance:
             return True, False
         if kick_direction == dive_direction:
@@ -62,28 +65,9 @@ class Penalty:
 
     @staticmethod
     def create_auto_penalty(player_kicking: str, goal_keeper: str):
-        kick_direction: PenaltyDirection = random.choice(
-            [
-                "left_top",
-                "left_low",
-                "center_top",
-                "center_low",
-                "right_top",
-                "right_low",
-            ]
-        )
-        dive_direction: PenaltyDirection = random.choice(
-            [
-                "left_top",
-                "left_low",
-                "center_top",
-                "center_low",
-                "right_top",
-                "right_low",
-            ]
-        )
-        is_out, is_goal = Penalty.calculate_is_goal(kick_direction, dive_direction)
-
-        return Penalty(
-            player_kicking, goal_keeper, kick_direction, dive_direction, is_out, is_goal
+        Penalty.create_player_kicked_penalty(
+            player_kicking,
+            goal_keeper,
+            random.choice(ALL_PENALTY_DIRECTIONS),
+            random.choice(ALL_PENALTY_DIRECTIONS),
         )
