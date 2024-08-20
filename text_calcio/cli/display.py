@@ -127,7 +127,7 @@ class CLIDisplay:
 
         return display
 
-    def display_evalations(self, action: Optional[Action] = None):
+    def display_evaluations(self, action: Optional[Action] = None):
         stats = MatchStats.create_from_match(self.match)
 
         tm_1_eval = [

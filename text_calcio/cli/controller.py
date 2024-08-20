@@ -56,7 +56,7 @@ class CLIController:
 
                 clean_screen()
 
-                print(self.display.display_evalations(self.match.get_current_action()))
+                print(self.display.display_evaluations(self.match.get_current_action()))
 
                 await ainput()
 
