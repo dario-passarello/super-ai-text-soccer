@@ -113,13 +113,11 @@ class Action:
         def_player_order = def_team.random_order(include_goalkeeper=False)
 
         player_assignments = {
-            **{
-                f"atk_{i + 1}": atk_player_order[i] for i in range(0, len(atk_team) - 1)
-            },
+            # Attacking team field players
+            **{f"atk_{i+1}": player for i, player in enumerate(atk_player_order[:-1])},
             "atk_goalkeeper": atk_team.get_goalkeeper(),
-            **{
-                f"def_{i + 1}": def_player_order[i] for i in range(0, len(def_team) - 1)
-            },
+            # Defending team field players
+            **{f"def_{i+1}": player for i, player in enumerate(def_player_order[:-1])},
             "def_goalkeeper": def_team.get_goalkeeper(),
         }
 
