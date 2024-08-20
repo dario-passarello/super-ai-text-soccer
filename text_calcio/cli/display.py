@@ -33,7 +33,6 @@ class CLIDisplay:
         self.phrase_counter = 0
 
     def display_minute(self):
-
         additional_time = (
             self.match.curr_minute - self.match.curr_phase.duration_minutes
         )
@@ -70,7 +69,6 @@ class CLIDisplay:
         return final_str
 
     def display_score(self):
-
         t1 = self.match.get_team_1()
         t2 = self.match.get_team_2()
         score_t1, score_t2 = self.match.get_no_spoiler_score()
@@ -78,7 +76,6 @@ class CLIDisplay:
         return f"{t1.abbr} {score_t1} - {score_t2} {t2.abbr}"
 
     def display_header(self):
-
         t1 = self.match.get_team_1()
         t2 = self.match.get_team_2()
         score_t1, score_t2 = self.match.get_no_spoiler_score()
@@ -132,12 +129,17 @@ class CLIDisplay:
                 for role, delta_eval in delta_evals.items()
             }
             delta_evals = defaultdict(int, delta_evals)
-            data = [(colored(pl, self.match.teams[tm].color), ev, delta_evals[pl]) for pl, ev, tm in merged]  # type: ignore
+            data = [
+                (colored(pl, self.match.teams[tm].color), ev, delta_evals[pl])
+                for pl, ev, tm in merged
+            ]  # type: ignore
             headers = [_("Player"), _("Evaluation"), _("Change")]
             colalign = ["left", "right", "right"]
         else:
             headers = [_("Player"), _("Evaluation")]
-            data = [(colored(pl, self.match.teams[tm].color), ev) for pl, ev, tm in merged]  # type: ignore
+            data = [
+                (colored(pl, self.match.teams[tm].color), ev) for pl, ev, tm in merged
+            ]  # type: ignore
             colalign = ["left", "right"]
 
         display = tabulate.tabulate(
@@ -187,7 +189,6 @@ class CLIDisplay:
     async def penalty_interaction(
         self,
     ) -> tuple[tuple[str, PenaltyDirection], tuple[str, PenaltyDirection]]:
-
         random_option = "0 - " + _("random")
 
         last_action = self.match.get_current_action()
@@ -283,7 +284,7 @@ class CLIDisplay:
         print(self.display_header())
         print()
 
-        kick_direction_name, kick_direction_id = None, None
+        _kick_direction_name, kick_direction_id = None, None
         q1_remain = True
         while q1_remain:
             print(soccer_goal)
@@ -339,9 +340,9 @@ class CLIDisplay:
         print(self.display_header())
         print()
 
-        def_goalie = assigments["def_goalie"]
+        _def_goalie = assigments["def_goalie"]
 
-        save_direction_name, save_direction_id = None, None
+        _save_direction_name, save_direction_id = None, None
         q2_remain = True
         while q2_remain:
             print(self.display_header())
@@ -401,11 +402,15 @@ def format_phrase(
     for assign_key, value in assignments.items():
         if "atk" in assign_key:
             formatted_dict[assign_key] = colored(
-                assignments[assign_key], atk_team.color, attrs=attrs  # type: ignore
+                assignments[assign_key],
+                atk_team.color,
+                attrs=attrs,  # type: ignore
             )  # type:ignore
         elif "def" in assign_key:
             formatted_dict[assign_key] = colored(
-                assignments[assign_key], def_team.color, attrs=attrs  # type: ignore
+                assignments[assign_key],
+                def_team.color,
+                attrs=attrs,  # type: ignore
             )  # type:ignore
         else:
             formatted_dict[assign_key] = assignments[assign_key]
