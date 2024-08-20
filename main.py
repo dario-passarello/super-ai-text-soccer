@@ -8,7 +8,7 @@ from text_calcio.cli.controller import CLIController
 from text_calcio.loaders.action_provider import AsyncQueueActionProvider
 from text_calcio.loaders.ai.action_loader import AsyncAIActionLoader
 from text_calcio.loaders.flavor import load_flavors
-from text_calcio.state.match import Match
+from text_calcio.state.match import Match, MatchConfig
 from text_calcio.state.team import Team
 
 
@@ -43,8 +43,19 @@ async def execute():
         ["Gio", "Giammy", "Pit", "Stef", "Paso"],
     )
 
+    config = MatchConfig.from_json(
+        os.path.join(os.path.dirname(__file__), "text_calcio/resources/config.json")
+    )
+
     with AsyncQueueActionProvider(action_generator) as provider:
-        match = Match(team_1, team_2, random_stadium, random_referee, provider)
+        match = Match(
+            team_1=team_1,
+            team_2=team_2,
+            stadium=random_stadium,
+            referee=random_referee,
+            action_provider=provider,
+            config=config,
+        )
 
         controller = CLIController(match)
         await controller.run()

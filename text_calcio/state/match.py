@@ -15,6 +15,8 @@ from text_calcio.state.penalty import Penalty
 from text_calcio.state.stadium import Stadium
 from text_calcio.state.team import Team
 
+import json
+
 
 ActionType = Literal["goal", "no_goal", "penalty", "own_goal"]
 
@@ -144,6 +146,57 @@ class Action:
         )
 
 
+@dataclass
+class MatchConfig:
+    tie_breaker: Literal[
+        "allow_tie", "on_tie_extra_time_and_penalties", "on_tie_penalties"
+    ] = "on_tie_extra_time_and_penalties"
+    start_from_penalties: bool = False
+    goal_added_time_min: float = 0.5
+    goal_added_time_max: float = 1.5
+    penalty_added_time_min: float = 0.75
+    penalty_added_time_max: float = 1.75
+    var_added_time_min: float = 1.0
+    var_added_time_max: float = 2.0
+    standard_action_probability: float = 0.15
+    extra_time_action_probability: float = 0.30
+    added_time_action_probability: float = 0.45
+    default_action_no_goal_probability: float = 0.72
+    default_action_goal_probability: float = 0.18
+    default_action_own_goal_probability: float = 0.02
+    default_action_penalty_probability: float = 0.08
+    default_action_var_probability: float = 0.1
+    penalties_shoot_count: int = 5
+
+    def __post_init__(self):
+        # Verify probabilities that should add up to 1
+        action_type_probs = [
+            self.default_action_no_goal_probability,
+            self.default_action_goal_probability,
+            self.default_action_own_goal_probability,
+            self.default_action_penalty_probability,
+        ]
+
+        total_prob = sum(action_type_probs)
+        if not np.isclose(total_prob, 1.0, atol=1e-6):
+            raise ValueError(
+                f"Action type probabilities should sum to 1, but they sum to {total_prob}"
+            )
+
+        # Verify all probabilities are not more than 1
+        for attr, value in vars(self).items():
+            if attr.endswith("_probability") and value > 1:
+                raise ValueError(
+                    f"Config '{attr}' must be less than or equal to 1, but it is {value}"
+                )
+
+    @classmethod
+    def from_json(cls, json_file: str):
+        with open(json_file, "r") as f:
+            config_data = json.load(f)
+        return cls(**config_data)
+
+
 class Match:
     """
     The match is divided into several phases:
@@ -177,34 +230,6 @@ class Match:
     - The Action object is tied to the Match and added to the list of actions.
     """
 
-    @dataclass
-    class Config:
-        tie_breaker: Literal[
-            "allow_tie", "on_tie_extra_time_and_penalties", "on_tie_penalties"
-        ] = "on_tie_extra_time_and_penalties"
-
-        start_from_penalties: bool = False
-        goal_added_time_min: float = 0.5
-        goal_added_time_max: float = 1.5
-        penalty_added_time_min: float = 0.75
-        penalty_added_time_max: float = 1.75
-        var_added_time_min: float = 1.0
-        var_added_time_max: float = 2.0
-
-        standard_action_probability = 0.15
-        extra_time_action_probability = 0.30
-        added_time_action_probability = 0.45
-
-        # Soft requirment: These for probabilities should sum to 1
-        default_action_no_goal_probability = 0.72
-        default_action_goal_probability = 0.18
-        default_action_own_goal_probability = 0.02
-        default_action_penalty_probability = 0.08
-
-        default_action_var_probability = 0.1
-
-        penalties_shoot_count = 5
-
     @total_ordering
     class Phase(Enum):
         FIRST_HALF = 0, 45
@@ -230,9 +255,9 @@ class Match:
         stadium: Stadium,
         referee: str,
         action_provider: AsyncActionProvider,
-        config: Optional[Match.Config] = None,
+        config: Optional[MatchConfig] = None,
     ):
-        self.config = config or Match.Config()
+        self.config = config or MatchConfig()
 
         self.teams = (team_1, team_2)
 

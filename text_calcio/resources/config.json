@@ -1,0 +1,19 @@
+{
+    "tie_breaker": "on_tie_extra_time_and_penalties",
+    "start_from_penalties": false,
+    "goal_added_time_min": 0.5,
+    "goal_added_time_max": 1.5,
+    "penalty_added_time_min": 0.75,
+    "penalty_added_time_max": 1.75,
+    "var_added_time_min": 1.0,
+    "var_added_time_max": 2.0,
+    "standard_action_probability": 0.15,
+    "extra_time_action_probability": 0.30,
+    "added_time_action_probability": 0.45,
+    "default_action_no_goal_probability": 0.72,
+    "default_action_goal_probability": 0.18,
+    "default_action_own_goal_probability": 0.02,
+    "default_action_penalty_probability": 0.08,
+    "default_action_var_probability": 0.1,
+    "penalties_shoot_count": 5
+}
