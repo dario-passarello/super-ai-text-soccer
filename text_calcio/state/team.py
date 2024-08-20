@@ -17,23 +17,15 @@ class Team:
     players: list[str]
 
     def get_goalkeeper(self):
-        return self.players[0]
+        return self.players[0] if self.players else None
 
     def __len__(self):
         return len(self.players)
 
-    def random_order(self, no_goalie=False, exclude_also=[]):
-        if no_goalie:
-            clone_list = list(self.players[1:])
-        else:
-            clone_list = list(self.players[0])
-        for player in exclude_also:
-            try:
-                atk_player_idx = clone_list.index(player)
-            except ValueError:
-                pass
-            else:
-                del clone_list[atk_player_idx]
-
-        random.shuffle(clone_list)
-        return clone_list
+    def random_order(
+        self, include_goalkeeper: bool = True, exclude: list[str] = None
+    ) -> list[str]:
+        exclude = exclude or []
+        player_pool = self.players[1:] if not include_goalkeeper else self.players[:]
+        filtered_players = [player for player in player_pool if player not in exclude]
+        return random.sample(filtered_players, len(filtered_players))

@@ -106,8 +106,8 @@ class Action:
         atk_team = teams[atk_team_id]
         def_team = teams[1 - atk_team_id]
 
-        atk_player_order = atk_team.random_order(no_goalie=True)
-        def_player_order = def_team.random_order(no_goalie=True)
+        atk_player_order = atk_team.random_order(include_goalkeeper=False)
+        def_player_order = def_team.random_order(include_goalkeeper=False)
 
         player_assignments = {
             **{
