@@ -114,10 +114,10 @@ class Action:
 
         player_assignments = {
             # Attacking team field players
-            **{f"atk_{i+1}": player for i, player in enumerate(atk_player_order[:-1])},
+            **{f"atk_{i+1}": player for i, player in enumerate(atk_player_order)},
             "atk_goalkeeper": atk_team.get_goalkeeper(),
             # Defending team field players
-            **{f"def_{i+1}": player for i, player in enumerate(def_player_order[:-1])},
+            **{f"def_{i+1}": player for i, player in enumerate(def_player_order)},
             "def_goalkeeper": def_team.get_goalkeeper(),
         }
 
@@ -412,140 +412,44 @@ class Match:
         is_tie = score_1 == score_2
 
         if self.curr_phase == Match.Phase.PENALTIES:
-            # TODO This may not work in case of sudden death (tie after 5 penalties)
-            # penalties shootout has completely different rules
-            # Calculate who kicks now
-            penalty_kick_count = (self.curr_minute - 1) // 2
-            penalties_remaining = max(
-                self.config.penalties_shoot_count - penalty_kick_count, 1
+            await self.handle_penalties(score_1, score_2)
+        elif self.is_current_phase_finished():
+            self.handle_phase_transition(is_tie)
+        else:
+            await self.perform_action()
+
+    async def handle_penalties(self, score_1: int, score_2: int):
+        # TODO This may not work in case of sudden death (tie after 5 penalties)
+        # penalties shootout has completely different rules
+        # Calculate who kicks now
+        penalty_kick_count = (self.curr_minute - 1) // 2
+        penalties_remaining = max(
+            self.config.penalties_shoot_count - penalty_kick_count, 1
+        )
+
+        curr_team_kicking = (self.curr_minute + 1) % 2
+
+        # Calculate penalty win condition
+        score_curr_team = score_1 if curr_team_kicking == 0 else score_2
+        score_other_team = score_2 if curr_team_kicking == 0 else score_1
+
+        if score_curr_team + penalties_remaining < score_other_team:
+            # If it is impossible to win
+            self.finished = True
+        else:
+            penalty_blueprint = ActionBlueprint("penalty", False, [], {}, None, None)
+
+            self.actions.append(
+                Action.create_from_blueprint(
+                    penalty_blueprint,
+                    self.curr_phase,
+                    self.curr_minute,
+                    curr_team_kicking,
+                    self.teams,
+                    self.referee,
+                    self.stadium,
+                )
             )
-
-            curr_team_kicking = (self.curr_minute + 1) % 2
-
-            # Calculate penalty win condition
-            score_curr_team = score_1 if curr_team_kicking == 0 else score_2
-            score_other_team = score_2 if curr_team_kicking == 0 else score_1
-
-            if score_curr_team + penalties_remaining < score_other_team:
-                # If it is impossible to win
-                self.finished = True
-            else:
-                penalty_blueprint = ActionBlueprint(
-                    "penalty", False, [], {}, None, None
-                )
-
-                self.actions.append(
-                    Action.create_from_blueprint(
-                        penalty_blueprint,
-                        self.curr_phase,
-                        self.curr_minute,
-                        curr_team_kicking,
-                        self.teams,
-                        self.referee,
-                        self.stadium,
-                    )
-                )
-        # else if phase is finished handle the end of phase conditions
-        elif (
-            self.curr_minute
-            > self.curr_phase.duration_minutes + self.get_added_time_minutes()
-        ):
-            if self.curr_phase == Match.Phase.FIRST_HALF:
-                # First half finished, continue to second half
-                self.curr_minute = 1
-                self.curr_phase = Match.Phase.SECOND_HALF
-            elif self.curr_phase == Match.Phase.SECOND_HALF:
-                if self.config.tie_breaker == "allow_tie":
-                    # allow_time = Finish always at the end of second half (independent of the result)
-                    self.finished = True
-                else:
-                    if is_tie:
-                        self.curr_minute = 1
-                        if self.config.tie_breaker == "on_tie_extra_time_and_penalties":
-                            self.curr_phase = (
-                                Match.Phase.FIRST_EXTRA_TIME
-                            )  # Skip to extra time
-                        elif self.config.tie_breaker == "on_tie_penalties":
-                            self.curr_phase = Match.Phase.PENALTIES  # Skip to penalties
-                    else:  # No tie to break at end of second half ==> finish game
-                        self.finished = True
-            elif self.curr_phase == Match.Phase.FIRST_EXTRA_TIME:
-                self.curr_minute = 1
-                self.curr_phase = Match.Phase.SECOND_EXTRA_TIME
-            elif self.curr_phase == Match.Phase.SECOND_EXTRA_TIME:
-                if is_tie:
-                    self.curr_minute = 1
-                    self.curr_phase = Match.Phase.PENALTIES
-                else:
-                    self.finished = True
-        else:  # We are playing normally
-            if self.curr_minute >= self.curr_phase.duration_minutes:
-                # If we are in added time (recupero) increase the odds of action happening
-                # There is more competitivity
-                action_pr = self.config.added_time_action_probability
-            elif self.curr_phase in [
-                Match.Phase.FIRST_EXTRA_TIME,
-                Match.Phase.SECOND_EXTRA_TIME,
-            ]:
-                # Same for added time
-                action_pr = self.config.extra_time_action_probability
-            else:
-                action_pr = self.config.standard_action_probability
-
-            do_action = np.random.random() < action_pr
-
-            is_last_minute = (
-                self.curr_minute
-                == self.curr_phase.duration_minutes + self.get_added_time_minutes()
-            )
-
-            # In last minute an action happens always (suspence and drama goes brrr)
-            if do_action or is_last_minute:
-                await self.prefetch_blueprints()
-
-                blueprint = await self.action_provider.get()
-
-                if is_last_minute and not is_tie:
-                    # Last minute action of every half is always given to the disadvantaged team
-
-                    # At last minute of every time let the disadvantaged team try a last action
-                    atk_team: Literal[0, 1] = [score_1, score_2].index(
-                        min([score_1, score_2])
-                    )  # type: ignore
-                else:
-                    # otherwise the two teams have the same odds to play as attackers
-                    atk_team = 1 if np.random.random() <= 0.5 else 0
-
-                if self.curr_minute <= self.curr_phase.duration_minutes:
-                    # If we are not in additional time, then increase additional times depending on actions
-                    if blueprint.action_type == "goal":
-                        self.added_time[self.curr_phase] += np.random.uniform(
-                            self.config.goal_added_time_min,
-                            self.config.goal_added_time_max,
-                        )
-                    elif blueprint.action_type == "penalty":
-                        self.added_time[self.curr_phase] += np.random.uniform(
-                            self.config.penalty_added_time_min,
-                            self.config.penalty_added_time_max,
-                        )
-
-                    if blueprint.use_var:
-                        self.added_time[self.curr_phase] += np.random.uniform(
-                            self.config.var_added_time_min,
-                            self.config.var_added_time_max,
-                        )
-
-                self.actions.append(
-                    Action.create_from_blueprint(
-                        blueprint,
-                        self.curr_phase,
-                        self.curr_minute,
-                        atk_team,
-                        self.teams,
-                        self.referee,
-                        self.stadium,
-                    )
-                )
 
     async def prefetch_blueprints(self, n=1):
         for i in range(n):
@@ -577,3 +481,114 @@ class Match:
 
     def is_match_finished(self):
         return self.finished
+
+    def is_current_phase_finished(self) -> bool:
+        return (
+            self.curr_minute
+            > self.curr_phase.duration_minutes + self.get_added_time_minutes()
+        )
+
+    def handle_phase_transition(self, is_tie: bool):
+        match self.curr_phase:
+            case Match.Phase.FIRST_HALF:
+                self.curr_minute = 1
+                self.curr_phase = Match.Phase.SECOND_HALF
+            case Match.Phase.SECOND_HALF:
+                self.handle_second_half_end(is_tie)
+            case Match.Phase.FIRST_EXTRA_TIME:
+                self.curr_minute = 1
+                self.curr_phase = Match.Phase.SECOND_EXTRA_TIME
+            case Match.Phase.SECOND_EXTRA_TIME:
+                self.handle_extra_time_end(is_tie)
+
+    def handle_second_half_end(self, is_tie: bool):
+        if self.config.tie_breaker == "allow_tie":
+            self.finished = True
+        elif is_tie:
+            self.curr_minute = 1
+            if self.config.tie_breaker == "on_tie_extra_time_and_penalties":
+                self.curr_phase = Match.Phase.FIRST_EXTRA_TIME
+            elif self.config.tie_breaker == "on_tie_penalties":
+                self.curr_phase = Match.Phase.PENALTIES
+        else:
+            self.finished = True
+
+    def handle_extra_time_end(self, is_tie: bool):
+        if is_tie:
+            self.curr_minute = 1
+            self.curr_phase = Match.Phase.PENALTIES
+        else:
+            self.finished = True
+
+    def determine_action_probability(self):
+        if self.curr_minute >= self.curr_phase.duration_minutes:
+            return self.config.added_time_action_probability
+        elif self.curr_phase in [
+            Match.Phase.FIRST_EXTRA_TIME,
+            Match.Phase.SECOND_EXTRA_TIME,
+        ]:
+            return self.config.extra_time_action_probability
+        else:
+            return self.config.standard_action_probability
+
+    def is_last_minute_of_current_phase(self) -> bool:
+        return (
+            self.curr_minute
+            == self.curr_phase.duration_minutes + self.get_added_time_minutes()
+        )
+
+    def should_perform_action(self, action_probability):
+        return (
+            np.random.random() < action_probability
+            or self.is_last_minute_of_current_phase()
+        )
+
+    def determine_attacking_team(self, is_tie, score_1, score_2):
+        if self.is_last_minute_of_current_phase() and not is_tie:
+            return [score_1, score_2].index(min([score_1, score_2]))
+        else:
+            return 1 if np.random.random() <= 0.5 else 0
+
+    def update_added_time(self, blueprint):
+        if self.curr_minute <= self.curr_phase.duration_minutes:
+            if blueprint.action_type == "goal":
+                self.added_time[self.curr_phase] += np.random.uniform(
+                    self.config.goal_added_time_min,
+                    self.config.goal_added_time_max,
+                )
+            elif blueprint.action_type == "penalty":
+                self.added_time[self.curr_phase] += np.random.uniform(
+                    self.config.penalty_added_time_min,
+                    self.config.penalty_added_time_max,
+                )
+            if blueprint.use_var:
+                self.added_time[self.curr_phase] += np.random.uniform(
+                    self.config.var_added_time_min,
+                    self.config.var_added_time_max,
+                )
+
+    async def perform_action(self):
+        action_probability = self.determine_action_probability()
+
+        if self.should_perform_action(action_probability):
+            await self.prefetch_blueprints()
+            blueprint = await self.action_provider.get()
+
+            score_1, score_2 = self.get_current_score()
+            is_tie = score_1 == score_2
+
+            atk_team = self.determine_attacking_team(is_tie, score_1, score_2)
+
+            self.update_added_time(blueprint)
+
+            self.actions.append(
+                Action.create_from_blueprint(
+                    blueprint,
+                    self.curr_phase,
+                    self.curr_minute,
+                    atk_team,
+                    self.teams,
+                    self.referee,
+                    self.stadium,
+                )
+            )
