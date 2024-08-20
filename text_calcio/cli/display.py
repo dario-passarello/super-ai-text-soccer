@@ -218,7 +218,7 @@ class CLIDisplay:
         team_atk = team_1 if last_action.team_atk_id == 0 else team_2
         team_def = team_2 if last_action.team_atk_id == 0 else team_1
 
-        atk_assigments = list(last_action.get_atk_players_assigments().items())
+        atk_assigments = list(last_action.get_atk_players_assignments().items())
 
         soccer_goal = """
 ._____________.

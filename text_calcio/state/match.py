@@ -22,12 +22,15 @@ ActionType = Literal["goal", "no_goal", "penalty", "own_goal"]
 @dataclass
 class Action:
     """
-    An Action object represents a single goal attempt from one of the two teams
-    playing the match. The Action is generating started by an ActionBlueprint
-    that contains the template narration and the details about who eventually
-    scored and who gave the assist, other than the evaluation of all player
-    during that action. An action may end in a penalty, in this case more details
-    about the penalty are stored in the penalty_info field.
+    An Action object represents a single goal attempt by one of the two teams
+    in a match.
+
+    The Action is created from an ActionBlueprint, which provides the template
+    narration, details about who scored, who assisted, and the performance
+    evaluations of all players involved in the action.
+
+    If the action results in a penalty, additional details about the penalty
+    are stored in the penalty_info field.
     """
 
     team_atk_id: Literal[0, 1]
@@ -65,7 +68,7 @@ class Action:
 
     def kick_penalty(self, penalty: Penalty):
         if not self.is_penalty_pending():
-            raise RuntimeError("Penalty not pending")
+            raise RuntimeError("There is no penalty to kick")
 
         self.penalty_info = penalty
         self.assist_player = None
@@ -83,7 +86,7 @@ class Action:
     def get_all_assigments(self):
         return {**self.player_assigments, **self.support_assigments}
 
-    def get_atk_players_assigments(self):
+    def get_atk_players_assignments(self):
         return {
             placeholder: name
             for placeholder, name in self.player_assigments.items()
@@ -107,9 +110,13 @@ class Action:
         def_player_order = def_team.random_order(no_goalie=True)
 
         player_assignments = {
-            **{f"atk_{i + 1}": atk_player_order[i] for i in range(0, len(atk_team) - 1)},
+            **{
+                f"atk_{i + 1}": atk_player_order[i] for i in range(0, len(atk_team) - 1)
+            },
             "atk_goalie": atk_team.get_goalkeeper(),
-            **{f"def_{i + 1}": def_player_order[i] for i in range(0, len(def_team) - 1)},
+            **{
+                f"def_{i + 1}": def_player_order[i] for i in range(0, len(def_team) - 1)
+            },
             "def_goalie": def_team.get_goalkeeper(),
         }
 
@@ -139,19 +146,35 @@ class Action:
 
 class Match:
     """
-    Represents the state of a simulated footbal match.
+    The match is divided into several phases:
+    - First half
+    - Second half
+    - Additional time
+    - Penalties
 
-    The match is divided in phases (first half, second half, additional times, penalties),
-    each phase is divided in minutes. At every minute an Action may happen. An Action contains
-    a human readable narration of what happened, which team attacks and which defends,
-    the roles of the players and the outcome of the action (goal, no goal, own goal or penalty)
+    Each phase is further divided into minutes.
+    At every minute, an Action may occur.
 
-    Calling the next() method of this class, advances the game clock and triggers the generation of the actions
-    that can be prefetched for perfomrance reasons.
-    At first the method extracts a random outcome of the action and then it requests the action_provider
-    to construct an action object (the creation logic is abstracted, it may be generate from AI or it can
-    be taken from a database). The action_provider returns a detailed ActionBlueprint that is used
-    to construct the Action object tied to the Match and then added to tle list of actions.
+    An Action includes the following details:
+    - A human-readable narration of what happened.
+    - The attacking and defending teams.
+    - The roles of the players involved.
+    - The outcome of the action, which can be one of the following:
+        - Goal
+        - No goal
+        - Own goal
+        - Penalty
+
+    When the next() method is called:
+    - The game clock advances, and an action is generated.
+    - Actions can be prefetched to avoid delays in the narration.
+    - The method first randomly determines the outcome of the action.
+    - It then requests the action_provider to construct an Action object.
+        - The creation logic for the action is abstracted; it may be generated
+          using AI or retrieved from a database.
+    - The action_provider returns a detailed ActionBlueprint, which is then used
+      to construct the Action object.
+    - The Action object is tied to the Match and added to the list of actions.
     """
 
     @dataclass
@@ -241,7 +264,7 @@ class Match:
 
     def get_added_time_minutes(self, phase: Optional[Match.Phase] = None) -> int:
         """
-        Returns the current added time minutes for the current phase or for a spefic phase
+        Returns the added time minutes for the current phase or for a specific phase
 
         Parameters
         ---
@@ -254,10 +277,7 @@ class Match:
         result : int
             The added time minutes of the desired phase
         """
-        if phase is None:
-            return int(round(self.added_time[self.curr_phase]))
-        else:
-            return int(round(self.added_time[phase]))
+        return int(round(self.added_time[phase or self.curr_phase]))
 
     def get_current_score(self) -> tuple[int, int]:
         """
@@ -522,7 +542,7 @@ class Match:
 
     def kick_penalty(self, penalty: Penalty):
         if not self.is_penalty_pending():
-            raise RuntimeError("Penalty not pending")
+            raise RuntimeError("There is no penalty to kick")
 
         curr_action = self.get_current_action()
 
