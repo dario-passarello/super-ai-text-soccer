@@ -113,11 +113,11 @@ class Action:
             **{
                 f"atk_{i + 1}": atk_player_order[i] for i in range(0, len(atk_team) - 1)
             },
-            "atk_goalie": atk_team.get_goalkeeper(),
+            "atk_goalkeeper": atk_team.get_goalkeeper(),
             **{
                 f"def_{i + 1}": def_player_order[i] for i in range(0, len(def_team) - 1)
             },
-            "def_goalie": def_team.get_goalkeeper(),
+            "def_goalkeeper": def_team.get_goalkeeper(),
         }
 
         support_assigments = {

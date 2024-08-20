@@ -124,6 +124,6 @@ msgstr ""
 "occhi o smettere di guardare lo schermo"
 
 #: text_calcio/cli/display.py:355
-msgid "{def_goalie} where are you diving?"
-msgstr "{def_goalie}, in che direzione ti tufferai?"
+msgid "{def_goalkeeper} where are you diving?"
+msgstr "{def_goalkeeper}, in che direzione ti tufferai?"
 

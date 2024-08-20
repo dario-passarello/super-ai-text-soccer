@@ -66,8 +66,8 @@ class ActionRequest:
 
 
 def get_player_valid_placeholders():
-    atk = [f"atk_{i + 1}" for i in range(4)] + ["atk_goalie"]
-    dfn = [f"def_{i + 1}" for i in range(4)] + ["def_goalie"]
+    atk = [f"atk_{i + 1}" for i in range(4)] + ["atk_goalkeeper"]
+    dfn = [f"def_{i + 1}" for i in range(4)] + ["def_goalkeeper"]
 
     pl = atk + dfn
 

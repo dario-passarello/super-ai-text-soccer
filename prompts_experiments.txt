@@ -8,7 +8,7 @@ The action concludes with a goal of the attacking team. Reserve only the last 2-
 if goal="false":
 The action concludes with a failed action of the attacking team. After this action make sure, narrating it in maximum 1-2 phrases, the possesion of the ball goes to the defending team (example: with a free kick in case of foul,with a throw-in, goal kick, interception or ball recovery, or anything else it comes to your mind).
 
-When you write the sentences you use the placeholders {A_1} {A_2} {A_3} {A_4} {A_goalie} for the name of the players of the A team. Similarly you will use {B_1} {B_2} {B_3} {B_4} {B_goalie} as placeholders of the name of the players of the B team. The A and B team name are placeholders too {A_team_name} {B_team_name}.
+When you write the sentences you use the placeholders {A_1} {A_2} {A_3} {A_4} {A_goalkeeper} for the name of the players of the A team. Similarly you will use {B_1} {B_2} {B_3} {B_4} {B_goalkeeper} as placeholders of the name of the players of the B team. The A and B team name are placeholders too {A_team_name} {B_team_name}.
 
 
 
@@ -25,5 +25,5 @@ Result is a list of object each one containing the schema of a "action", where t
 <Action minute="65" attacking_team="B"  goal="false"  score_before="1-1" score_after="1-1" scorer="A_3"/>
 <Action minute="90" attacking_team="A"  goal="true"  score_before="1-1" score_after="2-1" scorer="A_1"/>
 <Action minute="91" attacking_team="B"  goal="true"  score_before="2-1" score_after="2-2" scorer="B_3"/>
-<Action minute="93" attacking_team="A"  goal="true"  score_before="2-2" score_after="2-3" scorer="A_goalie"/>
+<Action minute="93" attacking_team="A"  goal="true"  score_before="2-2" score_after="2-3" scorer="A_goalkeeper"/>
 </Match>

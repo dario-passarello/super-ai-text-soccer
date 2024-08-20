@@ -9,9 +9,9 @@ You mainly will return a list of phrases that narrate sequentially the course of
 
 # Player Variables
 
-When you write the sentences you use the placeholders {atk_1} {atk_2} {atk_3} {atk_4} {atk_goalie} for 
+When you write the sentences you use the placeholders {atk_1} {atk_2} {atk_3} {atk_4} {atk_goalkeeper} for 
 the name of the players of the attacking team.
-Similarly you will use {def_1} {def_2} {def_3} {def_4} {def_goalie} as placeholders of the name
+Similarly you will use {def_1} {def_2} {def_3} {def_4} {def_goalkeeper} as placeholders of the name
 of the players of the defending team. 
 
 # Support Variables

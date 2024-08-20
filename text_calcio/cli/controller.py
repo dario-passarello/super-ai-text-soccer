@@ -39,11 +39,11 @@ class CLIController:
                 if self.match.is_penalty_pending():
                     (
                         (kicker, kick_pos),
-                        (goalie, save_pos),
+                        (goalkeeper, save_pos),
                     ) = await self.display.penalty_interaction()
 
                     penality = Penalty.create_player_kicked_penalty(
-                        kicker, goalie, kick_pos, save_pos
+                        kicker, goalkeeper, kick_pos, save_pos
                     )
 
                     self.match.kick_penalty(penality)

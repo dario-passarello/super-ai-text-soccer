@@ -9,7 +9,7 @@ PenaltyDirection = Literal[
     "left_top", "left_low", "center_top", "center_low", "right_top", "right_low"
 ]
 
-ALL_PENALTY_DIRECTIONS: list[PenaltyDirection] = [
+ALL_PENALTY_DIRECTIONS: tuple[PenaltyDirection, ...] = [
     "left_top",
     "left_low",
     "center_top",
@@ -22,7 +22,7 @@ ALL_PENALTY_DIRECTIONS: list[PenaltyDirection] = [
 @dataclass
 class Penalty:
     player_kicking: str
-    goal_keeper: str
+    goalkeeper: str
     kick_direction: PenaltyDirection
     dive_direction: PenaltyDirection
     is_out: bool
@@ -53,21 +53,21 @@ class Penalty:
     @staticmethod
     def create_player_kicked_penalty(
         player_kicking: str,
-        goal_keeper: str,
+        goalkeeper: str,
         kick_direction: PenaltyDirection,
         dive_direction: PenaltyDirection,
     ):
         is_out, is_goal = Penalty.calculate_is_goal(kick_direction, dive_direction)
 
         return Penalty(
-            player_kicking, goal_keeper, kick_direction, dive_direction, is_out, is_goal
+            player_kicking, goalkeeper, kick_direction, dive_direction, is_out, is_goal
         )
 
     @staticmethod
-    def create_auto_penalty(player_kicking: str, goal_keeper: str):
+    def create_auto_penalty(player_kicking: str, goalkeeper: str):
         Penalty.create_player_kicked_penalty(
             player_kicking,
-            goal_keeper,
+            goalkeeper,
             random.choice(ALL_PENALTY_DIRECTIONS),
             random.choice(ALL_PENALTY_DIRECTIONS),
         )

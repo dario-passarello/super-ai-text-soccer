@@ -373,7 +373,7 @@ class CLIDisplay:
 
         print(self.display_header(), end="\n\n")
 
-        _def_goalie = assigments["def_goalie"]
+        _def_goalkeeper = assigments["def_goalkeeper"]
 
         _save_direction_name, save_direction_id = None, None
         q2_remain = True
@@ -385,7 +385,7 @@ class CLIDisplay:
 
             print(
                 format_phrase(
-                    _("{def_goalie} where are you diving?"),
+                    _("{def_goalkeeper} where are you diving?"),
                     team_atk,
                     team_def,
                     assigments,
@@ -423,7 +423,7 @@ class CLIDisplay:
         assert kick_direction_id is not None
 
         return (kicker_placeholder, kick_direction_id), (
-            "{def_goalie}",
+            "{def_goalkeeper}",
             save_direction_id,
         )
 
