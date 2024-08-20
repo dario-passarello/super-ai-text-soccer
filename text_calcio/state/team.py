@@ -10,19 +10,18 @@ class Team:
         MIDFIELD = 1
         DEFENSE = 2
 
-    full_name : str
-    familiar_name : str
-    abbr : str
-    color : str
-    players : list[str]
-
+    full_name: str
+    familiar_name: str
+    abbr: str
+    color: str
+    players: list[str]
 
     def get_goalkeeper(self):
         return self.players[0]
-    
+
     def __len__(self):
         return len(self.players)
-    
+
     def random_order(self, no_goalie=False, exclude_also=[]):
         if no_goalie:
             clone_list = list(self.players[1:])
@@ -38,5 +37,3 @@ class Team:
 
         random.shuffle(clone_list)
         return clone_list
-
-

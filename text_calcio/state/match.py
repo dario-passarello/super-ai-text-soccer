@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import asyncio
 from collections import defaultdict
 from dataclasses import dataclass
 from enum import Enum
@@ -97,7 +96,6 @@ class Action:
         referee: str,
         stadium: Stadium,
     ):
-
         atk_team = teams[atk_team_id]
         def_team = teams[1 - atk_team_id]
 
@@ -349,7 +347,7 @@ class Match:
         self.curr_minute += 1
         score_1, score_2 = self.get_current_score()
         is_tie = score_1 == score_2
-        if self.curr_phase == Match.Phase.PENALTIES: 
+        if self.curr_phase == Match.Phase.PENALTIES:
             # TODO This may not work in case of sudden death (tie after 5 penalties)
             # penalties shootout has completely different rules
             # Calculate who kicks now
@@ -396,10 +394,12 @@ class Match:
                     if is_tie:
                         self.curr_minute = 1
                         if self.config.tie_breaker == "on_tie_extra_time_and_penalties":
-                            self.curr_phase = Match.Phase.FIRST_EXTRA_TIME # Skip to extra time
+                            self.curr_phase = (
+                                Match.Phase.FIRST_EXTRA_TIME
+                            )  # Skip to extra time
                         elif self.config.tie_breaker == "on_tie_penalties":
-                            self.curr_phase = Match.Phase.PENALTIES # Skip to penalties
-                    else: # No tie to break at end of second half ==> finish game
+                            self.curr_phase = Match.Phase.PENALTIES  # Skip to penalties
+                    else:  # No tie to break at end of second half ==> finish game
                         self.finished = True
             elif self.curr_phase == Match.Phase.FIRST_EXTRA_TIME:
                 self.curr_minute = 1
@@ -410,7 +410,7 @@ class Match:
                     self.curr_phase = Match.Phase.PENALTIES
                 else:
                     self.finished = True
-        else: # We are playing normally
+        else:  # We are playing normally
             if self.curr_minute >= self.curr_phase.duration_minutes:
                 # If we are in added time (recupero) increase the odds of action happening
                 # There is more competitivity
@@ -434,10 +434,14 @@ class Match:
             if do_action or is_last_minute:
                 await self.prefetch_blueprints()
                 blueprint = await self.action_provider.get()
-                if is_last_minute and not is_tie: # last minute action of every half is always given to the disadnvated team
+                if (
+                    is_last_minute and not is_tie
+                ):  # last minute action of every half is always given to the disadnvated team
                     # At last minute of every time let the disadvantage team try a last action
-                    atk_team: Literal[0, 1] = [score_1, score_2].index(min([score_1, score_2]))  # type: ignore
-                else: # otherwise the two teams have the same odds to play as attackers
+                    atk_team: Literal[0, 1] = [score_1, score_2].index(
+                        min([score_1, score_2])
+                    )  # type: ignore
+                else:  # otherwise the two teams have the same odds to play as attackers
                     atk_team = 1 if np.random.random() <= 0.5 else 0
                 if (
                     self.curr_minute <= self.curr_phase.duration_minutes
