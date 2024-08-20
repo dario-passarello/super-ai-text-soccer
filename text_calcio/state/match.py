@@ -17,6 +17,7 @@ from text_calcio.state.team import Team
 
 import json
 
+# TODO: consider renaming "Added time" to "Stoppage time"/"Additional time" https://en.wikipedia.org/wiki/Association_football#Duration_and_tie-breaking_methods
 
 ActionType = Literal["goal", "no_goal", "penalty", "own_goal"]
 
@@ -261,6 +262,7 @@ class Match:
 
         self.teams = (team_1, team_2)
 
+        # TODO: maybe less hardcoded/hacky way to test specific phases?
         if self.config.start_from_penalties:
             self.curr_phase: Match.Phase = Match.Phase.PENALTIES
         else:
