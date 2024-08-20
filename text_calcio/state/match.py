@@ -101,13 +101,13 @@ class Action:
         atk_team = teams[atk_team_id]
         def_team = teams[1 - atk_team_id]
 
-        # atk_player_order = atk_team.random_order(no_goalie=True)
-        # def_player_order = def_team.random_order(no_goalie=True)
+        atk_player_order = atk_team.random_order(no_goalie=True)
+        def_player_order = def_team.random_order(no_goalie=True)
 
         player_assignments = {
-            **{f"atk_{i}": atk_team.players[i] for i in range(1, len(atk_team))},
+            **{f"atk_{i + 1}": atk_player_order[i] for i in range(0, len(atk_team) - 1)},
             "atk_goalie": atk_team.get_goalkeeper(),
-            **{f"def_{i}": def_team.players[i] for i in range(1, len(def_team))},
+            **{f"def_{i + 1}": def_player_order[i] for i in range(0, len(def_team) - 1)},
             "def_goalie": def_team.get_goalkeeper(),
         }
 
@@ -158,24 +158,24 @@ class Match:
             "allow_tie", "on_tie_extra_time_and_penalties", "on_tie_penalties"
         ] = "on_tie_extra_time_and_penalties"
         start_from_penalties: bool = False
-        goal_added_time_min: float = 0.75
-        goal_added_time_max: float = 1.75
-        penalty_added_time_min: float = 1
-        penalty_added_time_max: float = 2.5
-        var_added_time_min: float = 1
-        var_added_time_max: float = 2.5
+        goal_added_time_min: float = 0.5
+        goal_added_time_max: float = 1.5
+        penalty_added_time_min: float = 0.75
+        penalty_added_time_max: float = 1.75
+        var_added_time_min: float = 1.0
+        var_added_time_max: float = 2.0
 
-        standard_action_probability = 0.2
-        extra_time_action_probability = 0.35
-        added_time_action_probability = 0.5
+        standard_action_probability = 0.15
+        extra_time_action_probability = 0.30
+        added_time_action_probability = 0.45
 
         # Soft requirment: These for probabilities should sum to 1
-        default_action_no_goal_probability = 0.65
-        default_action_goal_probability = 0.2
-        default_action_own_goal_probability = 0.05
-        default_action_penalty_probability = 0.10
+        default_action_no_goal_probability = 0.72
+        default_action_goal_probability = 0.18
+        default_action_own_goal_probability = 0.02
+        default_action_penalty_probability = 0.08
 
-        default_action_var_probaility = 0.10
+        default_action_var_probaility = 0.1
 
         penalties_shoot_count = 5
 
