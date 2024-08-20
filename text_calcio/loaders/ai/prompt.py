@@ -1,5 +1,3 @@
-from typing import Literal
-
 from text_calcio.loaders.action import ActionRequest
 
 
@@ -59,12 +57,12 @@ valid. NO GOALS MUST BE AWARDED IN THIS NARRATION. The scorer field must be left
 was not scored.
 """
 
-PENALTY_PROMPT_NO_VAR ="""
+PENALTY_PROMPT_NO_VAR = """
 The action concludes with a penalty assigned to the attacking team. Stop the narration before
 the penalty is kicked. You do not know who is the player of the attacking team that is going to kick the penalty.
 """
 
-PENALTY_PROMPT_VAR ="""
+PENALTY_PROMPT_VAR = """
 The action concludes with a penalty assigned to the attacking team after the referee checked the VAR. Stop the narration before
 the penalty is kicked. You do not know who is the player  of the attacking team that is going to kick the penalty.
 """
@@ -87,12 +85,13 @@ Remember that this narration that you are generating is part of a game, you do n
 don't make assumptions on information that you do not have (such as the score or how well a player is going).
 """
 
-def build_prompt(action_request : ActionRequest) -> str:
+
+def build_prompt(action_request: ActionRequest) -> str:
     outcome = action_request.action_type
     var_check = action_request.use_var
 
     prompt = AI_SYSTEM_PROMPT_BEGIN
-    prompt += '\n'
+    prompt += "\n"
     if outcome == "goal" and var_check:
         prompt += GOAL_PROMPT_VAR
     elif outcome == "goal" and not var_check:
@@ -107,7 +106,7 @@ def build_prompt(action_request : ActionRequest) -> str:
         prompt += PENALTY_PROMPT_VAR
     elif outcome == "penalty" and not var_check:
         prompt += PENALTY_PROMPT_NO_VAR
-    
+
     prompt += CONCLUDING_PROMPT
 
     return prompt

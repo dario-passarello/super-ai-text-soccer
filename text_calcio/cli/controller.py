@@ -12,9 +12,11 @@ from text_calcio.state.match import Match, Penalty
 class CLIController:
     @dataclass
     class Config:
-        penalty_mode : Literal['always_auto', 'always_player'] = 'always_player'
-    
-    def __init__(self, match: Match, config : Optional[CLIController.Config] = None) -> None:
+        penalty_mode: Literal["always_auto", "always_player"] = "always_player"
+
+    def __init__(
+        self, match: Match, config: Optional[CLIController.Config] = None
+    ) -> None:
         self.config = config or CLIController.Config()
         self.match = match
         self.display = CLIDisplay(match)
@@ -27,14 +29,19 @@ class CLIController:
 
             if curr_action is None:
                 self.display.print_display(header, [])
-                x = await ainput()
+                _x = await ainput()
             else:
                 for phrases in strings:
                     self.display.print_display(header, phrases)
-                    x = await ainput()
+                    _x = await ainput()
                 if self.match.is_penalty_pending():
-                    (kicker, kick_pos), (goalie, save_pos) = await self.display.penalty_interaction()
-                    penality = Penalty.create_player_kicked_penalty(kicker, goalie, kick_pos, save_pos)
+                    (
+                        (kicker, kick_pos),
+                        (goalie, save_pos),
+                    ) = await self.display.penalty_interaction()
+                    penality = Penalty.create_player_kicked_penalty(
+                        kicker, goalie, kick_pos, save_pos
+                    )
                     self.match.kick_penalty(penality)
                 print(CLEAR_CHAR)
                 if curr_action.is_goal():
@@ -45,6 +52,6 @@ class CLIController:
                 await ainput()
             print(CLEAR_CHAR)
             self.display.print_display(header, [])
-            print('Loading ...')
+            print("Loading ...")
             await self.match.next()
             print(CLEAR_CHAR)

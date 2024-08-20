@@ -23,7 +23,7 @@ class AsyncAIActionLoader(AsyncActionLoader):
         action_response = api_response.parsed
 
         if action_response is None:
-            raise RuntimeError(f"Cannot parse API response")
+            raise RuntimeError("Cannot parse API response")
 
         evaluations = {
             evl.player_placeholder: evl.evaluation

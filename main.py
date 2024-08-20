@@ -1,9 +1,7 @@
-
-
 import asyncio
 import os
 import random
-from openai import AsyncOpenAI, OpenAI
+from openai import AsyncOpenAI
 from dotenv import load_dotenv
 
 from text_calcio.cli.controller import CLIController
@@ -14,12 +12,11 @@ from text_calcio.state.match import Match
 from text_calcio.state.team import Team
 
 
-
 def main():
     asyncio.run(execute())
 
-async def execute():
 
+async def execute():
     load_dotenv()
 
     client = AsyncOpenAI(
@@ -35,25 +32,23 @@ async def execute():
     action_generator = AsyncAIActionLoader(client)
 
     team_1 = Team(
-        'A.C. FORGIA', 'FORGIA', 'FOR', "blue", ['Kien', 'Dani', 'Dario', 'Dav', 'Max']
+        "A.C. FORGIA", "FORGIA", "FOR", "blue", ["Kien", "Dani", "Dario", "Dav", "Max"]
     )
 
     team_2 = Team(
-        'F.C. PASTA CALCISTICA', 'PASTA', 'PAS', "red", ['Gio', 'Giammy', 'Pit', 'Stef', 'Paso']
+        "F.C. PASTA CALCISTICA",
+        "PASTA",
+        "PAS",
+        "red",
+        ["Gio", "Giammy", "Pit", "Stef", "Paso"],
     )
 
     with AsyncQueueActionProvider(action_generator) as provider:
         match = Match(team_1, team_2, random_stadium, random_referee, provider)
 
-
         controller = CLIController(match)
         await controller.run()
 
 
-
-
-
-
-
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
