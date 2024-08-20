@@ -5,7 +5,7 @@ from typing import Literal, Optional
 
 from aioconsole import ainput
 
-from text_calcio.cli.display import CLEAR_CHAR, CLIDisplay
+from text_calcio.cli.display import clean_screen, CLIDisplay
 from text_calcio.state.match import Match, Penalty
 
 
@@ -43,15 +43,15 @@ class CLIController:
                         kicker, goalie, kick_pos, save_pos
                     )
                     self.match.kick_penalty(penality)
-                print(CLEAR_CHAR)
+                clean_screen()
                 if curr_action.is_goal():
                     print(self.display.display_after_goal())
                     await ainput()
-                print(CLEAR_CHAR)
+                clean_screen()
                 print(self.display.display_evalations(self.match.get_current_action()))
                 await ainput()
-            print(CLEAR_CHAR)
+            clean_screen()
             self.display.print_display(header, [])
             print("Loading ...")
             await self.match.next()
-            print(CLEAR_CHAR)
+            clean_screen()
