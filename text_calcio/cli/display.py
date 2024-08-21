@@ -80,7 +80,8 @@ class CLIDisplay:
         t1 = self.match.home_team
         t2 = self.match.away_team
 
-        score_t1, score_t2 = self.match.get_no_spoiler_score()
+        # Avoid spoilers by not showing the latest result
+        score_t1, score_t2 = self.match.get_score(hide_latest_result=True)
 
         return f"{t1.short_name} {score_t1} - {score_t2} {t2.short_name}"
 
@@ -91,7 +92,8 @@ class CLIDisplay:
         t1_fmt = colored(t1.short_name, t1.color)  # type: ignore
         t2_fmt = colored(t2.short_name, t2.color)  # type: ignore
 
-        score_t1, score_t2 = self.match.get_no_spoiler_score()
+        # Avoid spoilers by not showing the latest result
+        score_t1, score_t2 = self.match.get_score(hide_latest_result=True)
 
         display = tabulate.tabulate(
             [[t1_fmt, f"{score_t1} - {score_t2}", t2_fmt, self.display_minute()]],
@@ -113,7 +115,7 @@ class CLIDisplay:
         t1_goals = [format_goal_entry(goal) for goal in stats.home_team_stats.goals]
         t2_goals = [format_goal_entry(goal) for goal in stats.away_team_stats.goals]
 
-        score_t1, score_t2 = self.match.get_current_score()
+        score_t1, score_t2 = self.match.get_score()
 
         headers = [t1_fmt, f"{score_t1} - {score_t2}", t2_fmt]
 

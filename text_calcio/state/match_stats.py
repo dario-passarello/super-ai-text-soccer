@@ -43,7 +43,7 @@ class TeamStats:
             if action.team_atk_id == team_id and action.phase != MatchPhase.PENALTIES
         )
 
-        score = match.get_current_score()[team_id]
+        score = match.get_score()[team_id]
 
         goals = [
             GoalStats.create_from_action(action)

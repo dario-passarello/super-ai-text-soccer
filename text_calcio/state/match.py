@@ -99,62 +99,32 @@ class Match:
         """
         return int(round(self.added_time[phase or self.curr_phase]))
 
-    def get_current_score(self) -> tuple[int, int]:
+    def get_score(self, hide_latest_result: bool = False) -> tuple[int, int]:
         """
-        Returns the score calculated for all actions currently contained
-        in the Match object.
+        Returns the current match score.
 
-        NOTE: This function returns the score updated to this action. If you use this
-        function for printing the score during an action, you will get the score updated to
-        action end, spoiling the end of the action (goal or no-goal).
+        Parameters
+        ---
+        hide_latest_result : bool, optional
+            If True, excludes the latest action from the score calculation.
+            Default is False.
 
         Returns
         ---
-        result : tuple of (int, int)
-            Contains the number of goal scored respectively by the home and away team
-
-        See also
-        ---
-        get_no_spoiler_score : Similar to this method, but omits in the score calculation the current action.
+        tuple[int, int]: Goals scored by (home_team, away_team).
         """
         score = [0, 0]
+        latest_action = self.get_current_action() if hide_latest_result else None
 
         for action in self.actions:
-            if action.is_goal():
+            if action.is_goal() and action is not latest_action:
                 score[action.team_atk_id] += 1
 
-        return tuple(score)  # type: ignore
-
-    def get_no_spoiler_score(self) -> tuple[int, int]:
-        """
-        Returns the score calculated for all actions currently contained
-        in the Match object excluding the action happeing in the current minute at the current phase (if present).
-
-        If this function is used to print the score while narrating the action it avoids spoilers by omitting the
-        outcome of the current action in the calculation. However it does not represent the current score that can
-        be calculated from the Match state.
-
-        Returns
-        ---
-        result : tuple of (int, int)
-            Contains the number of goal scored respectively by the home and away team
-
-        See also
-        ---
-        get_current_score : Similar to this method, but considres in the score calculation the current action.
-        """
-        score = [0, 0]
-        curr_action = self.get_current_action()
-
-        for action in self.actions:
-            if action.is_goal() and action is not curr_action:
-                score[action.team_atk_id] += 1
-
-        return tuple(score)  # type: ignore
+        return tuple(score)
 
     def get_current_action(self) -> Optional[MatchAction]:
         """
-        Gets the action happeing at the current minute and current phase (curr_minute, curr_phase), if present
+        Gets the action happening at the current minute and current phase (curr_minute, curr_phase), if present
 
         Returns
         ---
@@ -203,17 +173,16 @@ class Match:
 
         self.curr_minute += 1
 
-        score_1, score_2 = self.get_current_score()
-        is_tie = score_1 == score_2
-
         if self.curr_phase == MatchPhase.PENALTIES:
-            await self.handle_penalties(score_1, score_2)
+            await self.handle_penalties()
         elif self.is_current_phase_finished():
-            self.handle_phase_transition(is_tie)
+            self.handle_phase_transition()
         else:
             await self.perform_action()
 
-    async def handle_penalties(self, score_1: int, score_2: int):
+    async def handle_penalties(self):
+        score_1, score_2 = self.get_score()
+
         # TODO This may not work in case of sudden death (tie after 5 penalties)
         # penalties shootout has completely different rules
         # Calculate who kicks now
@@ -283,23 +252,23 @@ class Match:
             > self.curr_phase.duration_minutes + self.get_added_time_minutes()
         )
 
-    def handle_phase_transition(self, is_tie: bool):
+    def handle_phase_transition(self):
         match self.curr_phase:
             case MatchPhase.FIRST_HALF:
                 self.curr_minute = 1
                 self.curr_phase = MatchPhase.SECOND_HALF
             case MatchPhase.SECOND_HALF:
-                self.handle_second_half_end(is_tie)
+                self.handle_second_half_end()
             case MatchPhase.FIRST_EXTRA_TIME:
                 self.curr_minute = 1
                 self.curr_phase = MatchPhase.SECOND_EXTRA_TIME
             case MatchPhase.SECOND_EXTRA_TIME:
-                self.handle_extra_time_end(is_tie)
+                self.handle_extra_time_end()
 
-    def handle_second_half_end(self, is_tie: bool):
+    def handle_second_half_end(self):
         if self.config.tie_breaker == "allow_tie":
             self.finished = True
-        elif is_tie:
+        elif self.is_tie():
             self.curr_minute = 1
             if self.config.tie_breaker == "on_tie_extra_time_and_penalties":
                 self.curr_phase = MatchPhase.FIRST_EXTRA_TIME
@@ -308,8 +277,8 @@ class Match:
         else:
             self.finished = True
 
-    def handle_extra_time_end(self, is_tie: bool):
-        if is_tie:
+    def handle_extra_time_end(self):
+        if self.is_tie():
             self.curr_minute = 1
             self.curr_phase = MatchPhase.PENALTIES
         else:
@@ -338,11 +307,14 @@ class Match:
             or self.is_last_minute_of_current_phase()
         )
 
-    def determine_attacking_team(self, is_tie, score_1, score_2):
-        if self.is_last_minute_of_current_phase() and not is_tie:
-            return [score_1, score_2].index(min([score_1, score_2]))
+    def determine_attacking_team(self):
+        score_1, score_2 = self.get_score()
+
+        if self.is_last_minute_of_current_phase() and not self.is_tie():
+            # Allow the team that is losing to try to score a goal in the last minute
+            return 0 if score_1 < score_2 else 1
         else:
-            return 1 if np.random.random() <= 0.5 else 0
+            return random.choice([0, 1])
 
     def update_added_time(self, blueprint):
         if self.curr_minute <= self.curr_phase.duration_minutes:
@@ -369,10 +341,7 @@ class Match:
             await self.prefetch_blueprints()
             blueprint = await self.action_provider.get()
 
-            score_1, score_2 = self.get_current_score()
-            is_tie = score_1 == score_2
-
-            atk_team = self.determine_attacking_team(is_tie, score_1, score_2)
+            atk_team = self.determine_attacking_team()
 
             self.update_added_time(blueprint)
 
@@ -387,3 +356,8 @@ class Match:
                     self.stadium,
                 )
             )
+
+    def is_tie(self):
+        score_1, score_2 = self.get_score()
+
+        return score_1 == score_2
