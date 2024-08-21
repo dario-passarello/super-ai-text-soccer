@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from collections import defaultdict
 import random
-from typing import Optional
+from typing import Optional, cast
 
 import numpy as np
 
@@ -120,7 +120,7 @@ class Match:
             if action.is_goal() and action is not latest_action:
                 score[action.team_atk_id] += 1
 
-        return tuple(score)
+        return cast(tuple[int, int], tuple(score))
 
     def get_current_action(self) -> Optional[MatchAction]:
         """
@@ -137,7 +137,7 @@ class Match:
 
         return None
 
-    def get_all_actions_to_now(self) -> list[MatchAction]:
+    def get_actions_up_to_current_minute(self) -> list[MatchAction]:
         actions = []
 
         for action in self.actions:
@@ -165,7 +165,7 @@ class Match:
         """
         curr_action = self.get_current_action()
 
-        return curr_action and curr_action.is_penalty_pending()
+        return curr_action is not None and curr_action.is_penalty_pending()
 
     async def next(self) -> None:
         if self.is_penalty_pending():

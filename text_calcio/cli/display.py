@@ -20,6 +20,14 @@ import tabulate
 
 CLEAR_CHAR = "\033c"
 
+KICK_OR_DIVE_SELECTION_TEXT_ART = """
+._____________.
+|(1)  (3)  (5)|
+|             |    ???
+|             |  (0) ???
+|(2)  (4)  (6)|    ???
+"""
+
 
 class CLIDisplay:
     @dataclass
@@ -235,14 +243,6 @@ class CLIDisplay:
 
         atk_assigments = list(last_action.get_atk_players_assignments().items())
 
-        soccer_goal = """
-._____________.
-|(1)  (3)  (5)|
-|             |    ???
-|             |  (0) ???
-|(2)  (4)  (6)|    ???
-"""
-
         direction_names = [
             _("top left corner"),
             _("left on the ground"),
@@ -331,7 +331,7 @@ class CLIDisplay:
         q1_remain = True
 
         while q1_remain:
-            print(soccer_goal, end="\n\n")
+            print(KICK_OR_DIVE_SELECTION_TEXT_ART, end="\n\n")
             print(position_text, end="\n\n")
 
             print(
@@ -395,7 +395,7 @@ class CLIDisplay:
 
         while q2_remain:
             print(self.display_header(), end="\n\n")
-            print(soccer_goal, end="\n\n")
+            print(KICK_OR_DIVE_SELECTION_TEXT_ART, end="\n\n")
             print(position_text, end="\n\n")
 
             print(
