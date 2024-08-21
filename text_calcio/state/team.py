@@ -12,7 +12,7 @@ class Team:
 
     full_name: str
     familiar_name: str
-    abbr: str
+    short_name: str
     color: str
     players: list[str]
 

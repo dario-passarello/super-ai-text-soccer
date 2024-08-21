@@ -3,14 +3,15 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Literal, Optional
 
-from text_calcio.state.match import Action, Match
+from text_calcio.state.match import MatchAction, Match
+from text_calcio.state.match_phase import MatchPhase
 from text_calcio.state.team import Team
 
 
 @dataclass
 class MatchStats:
-    team_1_stats: TeamStats
-    team_2_stats: TeamStats
+    home_team_stats: TeamStats
+    away_team_stats: TeamStats
 
     @classmethod
     def create_from_match(cls, match: Match) -> MatchStats:
@@ -22,7 +23,7 @@ class MatchStats:
 
 @dataclass
 class TeamStats:
-    updated_at_phase: Match.Phase
+    updated_at_phase: MatchPhase
     updated_at_minute: int
     team: Team
     score: int
@@ -39,7 +40,7 @@ class TeamStats:
         n_attempts = sum(
             1
             for action in all_actions
-            if action.team_atk_id == team_id and action.phase != Match.Phase.PENALTIES
+            if action.team_atk_id == team_id and action.phase != MatchPhase.PENALTIES
         )
 
         score = match.get_current_score()[team_id]
@@ -81,13 +82,13 @@ class TeamStats:
 @dataclass
 class GoalStats:
     author: str
-    match_phase: Match.Phase
+    match_phase: MatchPhase
     minute: int
     assist: Optional[str]
     goal_type: Literal["goal", "own_goal", "penalty"]
 
     @staticmethod
-    def create_from_action(action: Action) -> Optional[GoalStats]:
+    def create_from_action(action: MatchAction) -> Optional[GoalStats]:
         if not action.is_goal():
             return None
 

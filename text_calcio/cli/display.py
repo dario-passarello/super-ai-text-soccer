@@ -8,8 +8,9 @@ from aioconsole import ainput
 import numpy as np
 from termcolor import colored
 
-from text_calcio.state.match import Action, Match
+from text_calcio.state.match import MatchAction, Match
 from text_calcio.state.match_stats import GoalStats, MatchStats
+from text_calcio.state.match_phase import MatchPhase
 from text_calcio.state.penalty import ALL_PENALTY_DIRECTIONS, PenaltyDirection
 from text_calcio.state.team import Team
 
@@ -44,19 +45,19 @@ class CLIDisplay:
         phase_indicator = ""
 
         match self.match.curr_phase:
-            case Match.Phase.FIRST_HALF:
+            case MatchPhase.FIRST_HALF:
                 phase_indicator = _("1st")
                 base_minute += 0
-            case Match.Phase.SECOND_HALF:
+            case MatchPhase.SECOND_HALF:
                 phase_indicator = _("2nd")
                 base_minute += 45
-            case Match.Phase.FIRST_EXTRA_TIME:
+            case MatchPhase.FIRST_EXTRA_TIME:
                 phase_indicator = _("1st ET")
                 base_minute += 90
-            case Match.Phase.SECOND_EXTRA_TIME:
+            case MatchPhase.SECOND_EXTRA_TIME:
                 phase_indicator = _("2nd ET")
                 base_minute += 105
-            case Match.Phase.PENALTIES:
+            case MatchPhase.PENALTIES:
                 phase_indicator = _("Shootout")
                 base_minute += 120
 
@@ -76,19 +77,19 @@ class CLIDisplay:
         return final_str
 
     def display_score(self):
-        t1 = self.match.get_team_1()
-        t2 = self.match.get_team_2()
+        t1 = self.match.home_team
+        t2 = self.match.away_team
 
         score_t1, score_t2 = self.match.get_no_spoiler_score()
 
-        return f"{t1.abbr} {score_t1} - {score_t2} {t2.abbr}"
+        return f"{t1.short_name} {score_t1} - {score_t2} {t2.short_name}"
 
     def display_header(self):
-        t1 = self.match.get_team_1()
-        t2 = self.match.get_team_2()
+        t1 = self.match.home_team
+        t2 = self.match.away_team
 
-        t1_fmt = colored(t1.abbr, t1.color)  # type: ignore
-        t2_fmt = colored(t2.abbr, t2.color)  # type: ignore
+        t1_fmt = colored(t1.short_name, t1.color)  # type: ignore
+        t2_fmt = colored(t2.short_name, t2.color)  # type: ignore
 
         score_t1, score_t2 = self.match.get_no_spoiler_score()
 
@@ -101,16 +102,16 @@ class CLIDisplay:
         return display
 
     def display_after_goal(self):
-        t1 = self.match.get_team_1()
-        t2 = self.match.get_team_2()
+        t1 = self.match.home_team
+        t2 = self.match.away_team
 
         t1_fmt = colored(t1.full_name, t1.color)  # type: ignore
         t2_fmt = colored(t2.full_name, t2.color)  # type: ignore
 
         stats = MatchStats.create_from_match(self.match)
 
-        t1_goals = [format_goal_entry(goal) for goal in stats.team_1_stats.goals]
-        t2_goals = [format_goal_entry(goal) for goal in stats.team_2_stats.goals]
+        t1_goals = [format_goal_entry(goal) for goal in stats.home_team_stats.goals]
+        t2_goals = [format_goal_entry(goal) for goal in stats.away_team_stats.goals]
 
         score_t1, score_t2 = self.match.get_current_score()
 
@@ -127,17 +128,21 @@ class CLIDisplay:
 
         return display
 
-    def display_evaluations(self, action: Optional[Action] = None):
+    def display_evaluations(self, action: Optional[MatchAction] = None):
         stats = MatchStats.create_from_match(self.match)
 
-        tm_1_eval = [
-            (pl, ev, 0) for pl, ev in stats.team_1_stats.player_evaluation.items()
-        ]
-        tm_2_eval = [
-            (pl, ev, 1) for pl, ev in stats.team_2_stats.player_evaluation.items()
-        ]
-
-        merged = sorted(tm_1_eval + tm_2_eval, key=itemgetter(1), reverse=True)
+        evaluations = sorted(
+            [
+                (player, evaluation, 0)
+                for player, evaluation in stats.home_team_stats.player_evaluation.items()
+            ]
+            + [
+                (player, evaluation, 1)
+                for player, evaluation in stats.away_team_stats.player_evaluation.items()
+            ],
+            key=itemgetter(1),
+            reverse=True,
+        )
 
         if action is not None:
             delta_evals = action.players_evaluation
@@ -148,16 +153,24 @@ class CLIDisplay:
             }
             delta_evals = defaultdict(int, delta_evals)
             data = [
-                (colored(pl, self.match.teams[tm].color), ev, delta_evals[pl])
-                for pl, ev, tm in merged
+                (
+                    colored(player, self.match.teams[team_id].color),
+                    evaluation,
+                    delta_evals[player],
+                )
+                for player, evaluation, team_id in evaluations
             ]  # type: ignore
+
             headers = [_("Player"), _("Evaluation"), _("Change")]
             colalign = ["left", "right", "right"]
         else:
             headers = [_("Player"), _("Evaluation")]
+
             data = [
-                (colored(pl, self.match.teams[tm].color), ev) for pl, ev, tm in merged
+                (colored(player, self.match.teams[team_id].color), evaluation)
+                for player, evaluation, team_id in evaluations
             ]  # type: ignore
+
             colalign = ["left", "right"]
 
         display = tabulate.tabulate(
@@ -173,11 +186,11 @@ class CLIDisplay:
         if last_action is None:
             return header, []
 
-        team_1 = self.match.get_team_1()
-        team_2 = self.match.get_team_2()
+        home_team = self.match.home_team
+        away_team = self.match.away_team
 
-        team_atk = team_1 if last_action.team_atk_id == 0 else team_2
-        team_def = team_2 if last_action.team_atk_id == 0 else team_1
+        team_atk = home_team if last_action.team_atk_id == 0 else away_team
+        team_def = away_team if last_action.team_atk_id == 0 else home_team
 
         formatted_phrases: list[str] = []
 
@@ -212,11 +225,11 @@ class CLIDisplay:
         if last_action is None:
             raise RuntimeError("No penalty found")
         assigments = last_action.get_all_assigments()
-        team_1 = self.match.get_team_1()
-        team_2 = self.match.get_team_2()
+        home_team = self.match.home_team
+        away_team = self.match.away_team
 
-        team_atk = team_1 if last_action.team_atk_id == 0 else team_2
-        team_def = team_2 if last_action.team_atk_id == 0 else team_1
+        team_atk = home_team if last_action.team_atk_id == 0 else away_team
+        team_def = away_team if last_action.team_atk_id == 0 else home_team
 
         atk_assigments = list(last_action.get_atk_players_assignments().items())
 
@@ -475,17 +488,17 @@ def format_goal_entry(goal: GoalStats):
             return f"{player_name} {minute}"
 
 
-def format_minute(phase: Match.Phase, minute: int):
+def format_minute(phase: MatchPhase, minute: int):
     base_minute = 0
 
-    if phase > Match.Phase.FIRST_HALF:
-        base_minute += Match.Phase.FIRST_HALF.duration_minutes
-    if phase > Match.Phase.SECOND_HALF:
-        base_minute += Match.Phase.SECOND_HALF.duration_minutes
-    if phase > Match.Phase.FIRST_EXTRA_TIME:
-        base_minute += Match.Phase.FIRST_EXTRA_TIME.duration_minutes
-    if phase > Match.Phase.SECOND_EXTRA_TIME:
-        base_minute += Match.Phase.SECOND_EXTRA_TIME.duration_minutes
+    if phase > MatchPhase.FIRST_HALF:
+        base_minute += MatchPhase.FIRST_HALF.duration_minutes
+    if phase > MatchPhase.SECOND_HALF:
+        base_minute += MatchPhase.SECOND_HALF.duration_minutes
+    if phase > MatchPhase.FIRST_EXTRA_TIME:
+        base_minute += MatchPhase.FIRST_EXTRA_TIME.duration_minutes
+    if phase > MatchPhase.SECOND_EXTRA_TIME:
+        base_minute += MatchPhase.SECOND_EXTRA_TIME.duration_minutes
 
     added_time = max(0, minute - phase.duration_minutes)
     total_minute = base_minute + min(phase.duration_minutes, minute)

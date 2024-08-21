@@ -31,11 +31,11 @@ async def execute():
 
     action_generator = AsyncAIActionLoader(client)
 
-    team_1 = Team(
+    home_team = Team(
         "A.C. FORGIA", "FORGIA", "FOR", "blue", ["Kien", "Dani", "Dario", "Dav", "Max"]
     )
 
-    team_2 = Team(
+    away_team = Team(
         "F.C. PASTA CALCISTICA",
         "PASTA",
         "PAS",
@@ -49,8 +49,8 @@ async def execute():
 
     with AsyncQueueActionProvider(action_generator) as provider:
         match = Match(
-            team_1=team_1,
-            team_2=team_2,
+            home_team=home_team,
+            away_team=away_team,
             stadium=random_stadium,
             referee=random_referee,
             action_provider=provider,
