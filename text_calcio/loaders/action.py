@@ -64,6 +64,9 @@ class ActionRequest:
     action_type: ActionType
     use_var: bool
 
+    def __str__(self):
+        return f"ActionRequest(action_type={self.action_type}, use_var={self.use_var})"
+
 
 def get_player_valid_placeholders():
     atk = [f"atk_{i + 1}" for i in range(4)] + ["atk_goalkeeper"]

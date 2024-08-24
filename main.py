@@ -11,6 +11,8 @@ from text_calcio.loaders.flavor import load_flavors
 from text_calcio.state.match import Match, MatchConfig
 from text_calcio.state.team import Team
 
+from text_calcio.test_controller import TestController, TestLoader
+
 
 def main():
     asyncio.run(execute())
@@ -29,7 +31,7 @@ async def execute():
     random_stadium = random.choice(stadiums)
     random_referee = random.choice(referees)
 
-    action_generator = AsyncAIActionLoader(client)
+    action_generator = TestLoader()  # AsyncAIActionLoader(client)
 
     home_team = Team(
         "A.C. FORGIA", "FORGIA", "FOR", "blue", ("Kien", "Dani", "Dario", "Dav", "Max")
@@ -47,7 +49,7 @@ async def execute():
         os.path.join(os.path.dirname(__file__), "text_calcio/resources/config.json")
     )
 
-    with AsyncQueueActionProvider(action_generator) as provider:
+    with AsyncQueueActionProvider(loader=action_generator) as provider:
         match = Match.initialize_new_match(
             home_team=home_team,
             away_team=away_team,
@@ -57,7 +59,7 @@ async def execute():
             config=config,
         )
 
-        controller = CLIController(match)
+        controller = TestController(match)
         await controller.run()
 
 

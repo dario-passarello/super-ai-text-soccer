@@ -171,7 +171,7 @@ class Match(Serializable):
     def is_penalty_pending(self) -> bool:
         """
         Checks if a penalty has to be kicked at the current state before continuing with the next() method.
-        If the result of this functio    def from_dict(self)n is True a penalty must be kicked before continuing.
+        If the result of this function is True a penalty must be kicked before continuing.
 
         Returns
         ---
@@ -207,30 +207,41 @@ class Match(Serializable):
         # TODO This may not work in case of sudden death (tie after 5 penalties)
         # penalties shootout has completely different rules
         # Calculate who kicks now
-        penalty_kick_count = (self.game_clock.minute - 1) // 2
-        penalties_remaining = max(
-            self.config.penalties_shoot_count - penalty_kick_count, 1
+
+        # TODO: might be worth to count the penalties kicked so far inside the match state
+        #   instead of relying on the game clock minute
+        kicked_penalties_count = (self.game_clock.minute - 1) // 2
+        remaining_penalties_count = max(
+            self.config.penalties_shoot_count - kicked_penalties_count, 1
         )
 
-        curr_team_kicking = cast(Literal[0, 1], (self.game_clock.minute + 1) % 2)
+        current_kicking_team = cast(Literal[0, 1], (self.game_clock.minute + 1) % 2)
 
         # Calculate penalty win condition
-        score_curr_team = score_1 if curr_team_kicking == 0 else score_2
-        score_other_team = score_2 if curr_team_kicking == 0 else score_1
+        match current_kicking_team:
+            case 0:
+                score_curr_team, score_other_team = score_1, score_2
+            case 1:
+                score_curr_team, score_other_team = score_2, score_1
+            case _:
+                raise RuntimeError("Invalid current kicking team")
 
-        if score_curr_team + penalties_remaining < score_other_team:
-            # If it is impossible to win
+        outcome_decided = score_curr_team > score_other_team + remaining_penalties_count
+
+        if outcome_decided:
             return attr.evolve(self, finished=True)
         else:
             penalty_blueprint = ActionBlueprint("penalty", False, [], {}, None, None)
+
             new_action = MatchAction.create_from_blueprint(
                 penalty_blueprint,
                 self.game_clock,
-                curr_team_kicking,
+                current_kicking_team,
                 (self.home_team, self.away_team),
                 self.referee,
                 self.stadium,
             )
+
             return attr.evolve(self, actions=self.actions + (new_action,))
 
     async def prefetch_blueprints(self, n=1):
@@ -308,15 +319,13 @@ class Match(Serializable):
             return attr.evolve(self, finished=True)
 
     def determine_action_probability(self):
-        if self.game_clock.minute >= self.game_clock.phase.duration_minutes:
-            return self.config.added_time_action_probability
-        elif self.game_clock.phase in [
-            MatchPhase.FIRST_EXTRA_TIME,
-            MatchPhase.SECOND_EXTRA_TIME,
-        ]:
-            return self.config.extra_time_action_probability
-        else:
-            return self.config.standard_action_probability
+        match self.game_clock.phase:
+            case _ if self.game_clock.minute >= self.game_clock.phase.duration_minutes:
+                return self.config.added_time_action_probability
+            case MatchPhase.FIRST_EXTRA_TIME | MatchPhase.SECOND_EXTRA_TIME:
+                return self.config.extra_time_action_probability
+            case _:
+                return self.config.standard_action_probability
 
     def is_last_minute_of_current_phase(self) -> bool:
         return (
@@ -331,10 +340,21 @@ class Match(Serializable):
         )
 
     def determine_attacking_team(self) -> Literal[0, 1]:
+        """
+        Determines the attacking team for the next action.
+
+        NOTE: We want to allow the team that is losing to try to score a goal in the last minute.
+        To do so, we check if the current phase is the last minute of the match and if the match is not a tie.
+        If both conditions are met, we return as attacking team the team that is losing.
+
+        Returns
+        ---
+        result : int
+            Returns 0 if the home team is attacking, 1 if the away team is attacking
+        """
         score_1, score_2 = self.get_score()
 
         if self.is_last_minute_of_current_phase() and not self.is_tie():
-            # Allow the team that is losing to try to score a goal in the last minute
             return 0 if score_1 < score_2 else 1
         else:
             return random.choice([0, 1])
@@ -405,6 +425,15 @@ class Match(Serializable):
     @classmethod
     def deserialize(cls, data: dict[str, Any]):
         return cattrs.structure(data, cls)
+
+    def __str__(self):
+        score_string = f"{self.home_team.short_name} {self.get_score()[0]} - {self.get_score()[1]} {self.away_team.short_name}"
+
+        actions_string = "\n".join(
+            [str(action) for action in self.get_actions_up_to_current_minute()]
+        )
+
+        return f"{score_string}\n{actions_string}"
 
 
 def custom_unstructure(instance):
