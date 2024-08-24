@@ -1,8 +1,9 @@
-from dataclasses import dataclass
 from typing import Any
 
+import attr
 
-@dataclass
+
+@attr.s(frozen=True, auto_attribs=True)
 class Stadium:
     prefix: str
     name: str

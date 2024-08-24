@@ -83,6 +83,7 @@ while -3 is for very important errors, 0 is neutral. You can omit players only i
 
 Remember that this narration that you are generating is part of a game, you do not have the full context of the game so
 don't make assumptions on information that you do not have (such as the score or how well a player is going).
+Make an excessive use of emoji.
 """
 
 

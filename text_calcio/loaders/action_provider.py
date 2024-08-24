@@ -3,6 +3,8 @@ from __future__ import annotations
 from abc import ABC, abstractmethod
 import asyncio
 from typing import Optional
+
+from aioconsole import aprint
 from text_calcio.loaders.action import ActionBlueprint, ActionRequest
 from text_calcio.loaders.ai.action_loader import AsyncAIActionLoader
 
@@ -79,7 +81,7 @@ class AsyncQueueActionProvider(AsyncActionProvider):
                         if attempt < self.MAX_RETRIES - 1:
                             pass
                         else:
-                            print("Max retries reached. Operation failed.")
+                            await aprint("Max retries reached. Operation failed.")
                             raise  # Re-raise the exception if max retries reached
         except asyncio.CancelledError:
             pass

@@ -1,20 +1,22 @@
-from dataclasses import dataclass
 from enum import Enum
 import random
+from typing import Optional
+
+import attr
 
 
-@dataclass
+@attr.s(frozen=True)
 class Team:
     class Role(Enum):
         ATTACK = 0
         MIDFIELD = 1
         DEFENSE = 2
 
-    full_name: str
-    familiar_name: str
-    abbr: str
-    color: str
-    players: list[str]
+    full_name: str = attr.ib()
+    familiar_name: str = attr.ib()
+    short_name: str = attr.ib()
+    color: str = attr.ib()
+    players: tuple[str, ...] = attr.ib()
 
     def get_goalkeeper(self):
         return self.players[0] if self.players else None
@@ -23,7 +25,7 @@ class Team:
         return len(self.players)
 
     def random_order(
-        self, include_goalkeeper: bool = True, exclude: list[str] = None
+        self, include_goalkeeper: bool = True, exclude: Optional[list[str]] = None
     ) -> list[str]:
         exclude = exclude or []
         player_pool = self.players[1:] if not include_goalkeeper else self.players[:]
