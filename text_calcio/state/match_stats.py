@@ -66,7 +66,7 @@ class TeamStats:
 
             for placeholder, score in action.players_evaluation.items():
                 role = placeholder.strip("{}")
-                player_name = action.player_assigments[role]
+                player_name = action.player_assignments[role]
 
                 if team_role in role:
                     player_evaluation[player_name] += score

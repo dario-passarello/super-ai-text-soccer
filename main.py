@@ -49,18 +49,16 @@ async def execute():
         os.path.join(os.path.dirname(__file__), "text_calcio/resources/config.json")
     )
 
-    with AsyncQueueActionProvider(loader=action_generator) as provider:
-        match = Match.initialize_new_match(
-            home_team=home_team,
-            away_team=away_team,
-            stadium=random_stadium,
-            referee=random_referee,
-            action_provider=provider,
-            config=config,
-        )
+    match = Match.initialize_new_match(
+        home_team=home_team,
+        away_team=away_team,
+        stadium=random_stadium,
+        referee=random_referee,
+        config=config,
+    )
 
-        controller = TestController(match)
-        await controller.run()
+    controller = TestController(match)
+    await controller.run()
 
 
 if __name__ == "__main__":

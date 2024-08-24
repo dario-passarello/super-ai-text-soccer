@@ -67,6 +67,9 @@ class MatchPhase(Enum):
     def next_phase(self):
         if self == MatchPhase.PENALTIES:
             raise ValueError("No more phases after PENALTIES")
+
+        print(self.id)
+
         return MatchPhase.get_phase_by_id(self.id + 1)
 
 

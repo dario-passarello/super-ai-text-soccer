@@ -62,13 +62,14 @@ class TestController:
             self.match = await self.match.next()
 
     async def run(self):
-        # await self.match.prefetch_blueprints(3)
         while not self.match.is_match_finished():
             await self.continue_until_input_required()
 
             print("awooo")
 
             print(self.match)
+
+            input("waiting for penalty handling")
 
         # penalty_result = await self.display.penalty_interaction(self)
 

@@ -63,7 +63,6 @@ class Match(Serializable):
     game_clock: MatchTime = attr.ib()
     stadium: Stadium = attr.ib()
     referee: str = attr.ib()
-    action_provider: AsyncActionProvider = attr.ib(repr=False, metadata={"omit": True})
     actions: tuple[MatchAction, ...] = attr.ib(default=attr.Factory(tuple))
     stoppage_times: frozendict[MatchPhase, float] = attr.ib(
         factory=lambda: frozendict({p: 0.0 for p in list(MatchPhase)})
@@ -78,16 +77,14 @@ class Match(Serializable):
         away_team: Team,
         stadium: Stadium,
         referee: str,
-        action_provider: AsyncActionProvider,
         config: Optional[MatchConfig] = None,
     ):
         return Match(
-            home_team,
-            away_team,
-            MatchTime(),
-            stadium,
-            referee,
-            action_provider,
+            home_team=home_team,
+            away_team=away_team,
+            game_clock=MatchTime(),
+            stadium=stadium,
+            referee=referee,
             config=config or MatchConfig(),
         )
 
@@ -230,37 +227,22 @@ class Match(Serializable):
 
         if outcome_decided:
             return attr.evolve(self, finished=True)
-        else:
-            penalty_blueprint = ActionBlueprint("penalty", False, [], {}, None, None)
 
-            new_action = MatchAction.create_from_blueprint(
-                penalty_blueprint,
-                self.game_clock,
-                current_kicking_team,
-                (self.home_team, self.away_team),
-                self.referee,
-                self.stadium,
-            )
+        penalty_blueprint = ActionBlueprint("penalty", False, [], {}, None, None)
 
-            return attr.evolve(self, actions=self.actions + (new_action,))
+        new_action = MatchAction(
+            team_atk_id=current_kicking_team,
+            time=self.game_clock,
+            type="penalty",
+            goal_player=goal_player,
+            assist_player=assist_player,
+            player_assignments=player_assignments,
+            support_assignments=support_assignments,
+            penalty=None,
+            var_review=var_review,
+        )
 
-    async def prefetch_blueprints(self, n=1):
-        for i in range(n):
-            choices: list[ActionType] = ["goal", "no_goal", "penalty", "own_goal"]
-
-            probabilities = [
-                self.config.default_action_goal_probability,
-                self.config.default_action_no_goal_probability,
-                self.config.default_action_penalty_probability,
-                self.config.default_action_own_goal_probability,
-            ]
-
-            (action_type,) = random.choices(choices, probabilities, k=1)
-
-            var = np.random.random() < self.config.default_action_var_probability
-
-            # Send the request to the provider that will fetch the blueprints used in get
-            await self.action_provider.request(ActionRequest(action_type, var))
+        return attr.evolve(self, actions=self.actions + (new_action,))
 
     def kick_penalty(self, penalty: Penalty):
         if not self.is_penalty_pending():
@@ -359,24 +341,27 @@ class Match(Serializable):
         else:
             return random.choice([0, 1])
 
-    def update_added_time(self, blueprint):
+    def update_added_time(self, action: MatchAction):
         if self.game_clock.minute <= self.game_clock.phase.duration_minutes:
             stoppage_time_change = 0.0
-            if blueprint.action_type == "goal":
+
+            if action.type == "goal":
                 stoppage_time_change += np.random.uniform(
                     self.config.goal_added_time_min,
                     self.config.goal_added_time_max,
                 )
-            elif blueprint.action_type == "penalty":
+            elif action.type == "penalty":
                 stoppage_time_change += np.random.uniform(
                     self.config.penalty_added_time_min,
                     self.config.penalty_added_time_max,
                 )
-            if blueprint.use_var:
+
+            if action.var_review:
                 stoppage_time_change += np.random.uniform(
                     self.config.var_added_time_min,
                     self.config.var_added_time_max,
                 )
+
             new_stoppage_time = (
                 self.stoppage_times[self.game_clock.phase] + stoppage_time_change
             )
@@ -391,21 +376,71 @@ class Match(Serializable):
         action_probability = self.determine_action_probability()
 
         if self.should_perform_action(action_probability):
-            await self.prefetch_blueprints()
+            choices: list[ActionType] = ["goal", "no_goal", "penalty", "own_goal"]
 
-            atk_team = self.determine_attacking_team()
+            probabilities = [
+                self.config.default_action_goal_probability,
+                self.config.default_action_no_goal_probability,
+                self.config.default_action_penalty_probability,
+                self.config.default_action_own_goal_probability,
+            ]
 
-            blueprint = await self.action_provider.get()
+            (action_type,) = random.choices(choices, probabilities, k=1)
 
-            new_stoppage_times = self.update_added_time(blueprint)
-            new_action = MatchAction.create_from_blueprint(
-                blueprint,
-                self.game_clock,
-                atk_team,
-                (self.home_team, self.away_team),
-                self.referee,
-                self.stadium,
+            var_review = np.random.random() < self.config.default_action_var_probability
+
+            # Send the request to the provider that will fetch the blueprints used in get
+            # await self.action_provider.request(ActionRequest(action_type, var_review))
+
+            attack_team_index = self.determine_attacking_team()
+
+            # blueprint = await self.action_provider.get()
+
+            attack_team = self.get_teams()[attack_team_index]
+            defend_team = self.get_teams()[1 - attack_team_index]
+
+            attack_players = attack_team.random_order(include_goalkeeper=False)
+            defend_players = defend_team.random_order(include_goalkeeper=False)
+
+            player_assignments = {
+                # Attacking team field players
+                **{f"atk_{i+1}": player for i, player in enumerate(attack_players)},
+                "atk_goalkeeper": attack_team.get_goalkeeper(),
+                # Defending team field players
+                **{f"def_{i+1}": player for i, player in enumerate(defend_players)},
+                "def_goalkeeper": defend_team.get_goalkeeper(),
+            }
+
+            # TODO: change name to this, it's confusing w.r.t. player_assignments
+            support_assignments = {
+                "referee": self.referee,
+                "stadium": self.stadium.name,
+                "atk_team_name": attack_team.familiar_name,
+                "def_team_name": defend_team.familiar_name,
+            }
+
+            match action_type:
+                case "penalty":
+                    goal_player, assist_player = None, None
+                case "own_goal":
+                    goal_player, assist_player = attack_players[0], None
+                case _:
+                    goal_player, assist_player, *_ = attack_players
+
+            new_action = MatchAction(
+                team_atk_id=attack_team_index,
+                time=self.game_clock,
+                type=action_type,
+                goal_player=goal_player,
+                assist_player=assist_player,
+                player_assignments=player_assignments,
+                support_assignments=support_assignments,
+                penalty=None,
+                var_review=var_review,
             )
+
+            new_stoppage_times = self.update_added_time(new_action)
+
             return attr.evolve(
                 self,
                 stoppage_times=new_stoppage_times,
