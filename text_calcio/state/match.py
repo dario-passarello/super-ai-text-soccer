@@ -20,8 +20,6 @@ from text_calcio.state.match_phase import MatchPhase
 
 from frozendict import frozendict
 
-# TODO: consider renaming "Added time" to "Stoppage time"/"Additional time" https://en.wikipedia.org/wiki/Association_football#Duration_and_tie-breaking_methods
-
 
 @attr.s(frozen=True)
 class Match(Serializable):
