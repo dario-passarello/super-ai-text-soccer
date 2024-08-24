@@ -1,12 +1,18 @@
 # Super AI Text Soccery
 
-## Contribute
-
 ### Install
 
 ```bash
-pip install -r requirements.txt
+poetry install
 ```
+
+### Run
+
+```bash
+poetry run python main.py
+```
+
+## Contribute
 
 ### Setup git hooks for pre-commit
 
