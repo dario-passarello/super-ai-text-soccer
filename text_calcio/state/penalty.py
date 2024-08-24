@@ -1,7 +1,7 @@
-from dataclasses import dataclass
 import random
 from typing import Literal
 
+import attr
 import numpy as np
 
 
@@ -9,17 +9,17 @@ PenaltyDirection = Literal[
     "left_top", "left_low", "center_top", "center_low", "right_top", "right_low"
 ]
 
-ALL_PENALTY_DIRECTIONS: tuple[PenaltyDirection, ...] = [
+ALL_PENALTY_DIRECTIONS: tuple[PenaltyDirection, ...] = (
     "left_top",
     "left_low",
     "center_top",
     "center_low",
     "right_top",
     "right_low",
-]
+)
 
 
-@dataclass
+@attr.s(frozen=True, auto_attribs=True)
 class Penalty:
     player_kicking: str
     goalkeeper: str

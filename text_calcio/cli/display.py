@@ -3,14 +3,15 @@ from __future__ import annotations
 from collections import defaultdict
 from dataclasses import dataclass
 from operator import itemgetter
-from typing import Mapping, Optional
-from aioconsole import ainput
+from typing import AsyncGenerator, Awaitable, Callable, Literal, Mapping, Optional
+from aioconsole import aprint
 import numpy as np
 from termcolor import colored
 
 from text_calcio.state.match import MatchAction, Match
 from text_calcio.state.match_stats import GoalStats, MatchStats
 from text_calcio.state.match_phase import MatchPhase
+from text_calcio.state.match_time import MatchTime
 from text_calcio.state.penalty import ALL_PENALTY_DIRECTIONS, PenaltyDirection
 from text_calcio.state.team import Team
 
@@ -29,6 +30,14 @@ KICK_OR_DIVE_SELECTION_TEXT_ART = """
 """
 
 
+@dataclass
+class PenaltyInteractionResult:
+    player_kicking: str
+    kick_direction: PenaltyDirection
+    player_saving: str
+    save_direction: PenaltyDirection
+
+
 class CLIDisplay:
     @dataclass
     class Config:
@@ -41,18 +50,16 @@ class CLIDisplay:
         self.match = match
         self.phrase_counter = 0
 
-    def display_minute(self):
-        additional_time = (
-            self.match.curr_minute - self.match.curr_phase.duration_minutes
-        )
+    def format_minute(self):
+        curr_time = self.match.game_clock
 
-        base_minute = min(
-            self.match.curr_phase.duration_minutes, self.match.curr_minute
-        )
+        additional_time = curr_time.minute - curr_time.phase.duration_minutes
+
+        base_minute = min(curr_time.phase.duration_minutes, curr_time.minute)
 
         phase_indicator = ""
 
-        match self.match.curr_phase:
+        match curr_time.phase:
             case MatchPhase.FIRST_HALF:
                 phase_indicator = _("1st")
                 base_minute += 0
@@ -69,7 +76,7 @@ class CLIDisplay:
                 phase_indicator = _("Shootout")
                 base_minute += 120
 
-                return _("Kick") + f" {(self.match.curr_minute // 2)} {phase_indicator}"
+                return _("Kick") + f" {(curr_time.minute // 2)} {phase_indicator}"
             case _:
                 raise ValueError("Invalid phase")
 
@@ -77,14 +84,14 @@ class CLIDisplay:
 
         if additional_time > 0:
             final_str += (
-                f" + {additional_time}:00  (+{self.match.get_added_time_minutes()})"
+                f" + {additional_time}:00  (+{self.match.get_stoppage_time_minutes()})"
             )
 
         final_str += f" {phase_indicator}"
 
         return final_str
 
-    def display_score(self):
+    def format_score(self):
         t1 = self.match.home_team
         t2 = self.match.away_team
 
@@ -93,7 +100,7 @@ class CLIDisplay:
 
         return f"{t1.short_name} {score_t1} - {score_t2} {t2.short_name}"
 
-    def display_header(self):
+    def render_header(self):
         t1 = self.match.home_team
         t2 = self.match.away_team
 
@@ -104,14 +111,14 @@ class CLIDisplay:
         score_t1, score_t2 = self.match.get_score(hide_latest_result=True)
 
         display = tabulate.tabulate(
-            [[t1_fmt, f"{score_t1} - {score_t2}", t2_fmt, self.display_minute()]],
+            [[t1_fmt, f"{score_t1} - {score_t2}", t2_fmt, self.format_minute()]],
             headers=[],
             tablefmt="rounded_grid",
         )
 
         return display
 
-    def display_after_goal(self):
+    def render_after_goal_view(self):
         t1 = self.match.home_team
         t2 = self.match.away_team
 
@@ -138,7 +145,7 @@ class CLIDisplay:
 
         return display
 
-    def display_evaluations(self, action: Optional[MatchAction] = None):
+    def render_evaluations(self, action: Optional[MatchAction] = None):
         stats = MatchStats.create_from_match(self.match)
 
         evaluations = sorted(
@@ -164,7 +171,7 @@ class CLIDisplay:
             delta_evals = defaultdict(int, delta_evals)
             data = [
                 (
-                    colored(player, self.match.teams[team_id].color),
+                    colored(player, self.match.get_teams()[team_id].color),
                     evaluation,
                     delta_evals[player],
                 )
@@ -177,7 +184,7 @@ class CLIDisplay:
             headers = [_("Player"), _("Evaluation")]
 
             data = [
-                (colored(player, self.match.teams[team_id].color), evaluation)
+                (colored(player, self.match.get_teams()[team_id].color), evaluation)
                 for player, evaluation, team_id in evaluations
             ]  # type: ignore
 
@@ -189,12 +196,12 @@ class CLIDisplay:
 
         return display
 
-    def display(self) -> tuple[str, list[list[str]]]:
+    async def display_action_sequence(self) -> AsyncGenerator[None, None]:
         last_action = self.match.get_current_action()
-        header = CLEAR_CHAR + self.display_header()
 
         if last_action is None:
-            return header, []
+            yield
+            return
 
         home_team = self.match.home_team
         away_team = self.match.away_team
@@ -211,24 +218,26 @@ class CLIDisplay:
                 )
             )
 
-        return header, [
-            formatted_phrases[: i + 1] for i in range(len(formatted_phrases))
-        ]
+        for i in range(len(formatted_phrases)):
+            await clean_screen()
+            await aprint(self.render_header(), end="\n" * 3)
+            phrases_revelaed = formatted_phrases[: i + 1]
+            reordered_phrases = phrases_revelaed[::-1][:5]
+            if len(reordered_phrases) > 0:
+                await aprint(colored(f"> {reordered_phrases[0]}"), end="\n\n")
 
-    def print_display(self, header: str, phrases_order: list[str]):
-        print(header, end="\n\n\n")
+                for phrase in reordered_phrases[1:]:
+                    await aprint(phrase, end="\n\n")
+            yield
 
-        last_phrases = phrases_order[::-1][:5]
-
-        if len(last_phrases) > 0:
-            print(colored(f"> {last_phrases[0]}"), end="\n\n")
-
-            for phrase in last_phrases[1:]:
-                print(phrase, end="\n\n")
+    PenaltyInteractionMessage = (
+        Literal["prompt_continue", "require_input"]
+        | tuple[Literal["interaction_complete"], PenaltyInteractionResult]
+    )
 
     async def penalty_interaction(
-        self,
-    ) -> tuple[tuple[str, PenaltyDirection], tuple[str, PenaltyDirection]]:
+        self, controller: Callable[[bool], Awaitable[Optional[str]]]
+    ) -> PenaltyInteractionResult:
         random_option = "0 - " + _("random")
 
         last_action = self.match.get_current_action()
@@ -260,12 +269,12 @@ class CLIDisplay:
         q0_remain = True
         role, kicker_name, kicker_placeholder = None, None, None
 
-        clean_screen()
+        await clean_screen()
 
         while q0_remain:
-            print(self.display_header(), end="\n\n")
+            await aprint(self.render_header(), end="\n\n")
 
-            print(
+            await aprint(
                 format_phrase(
                     _(
                         "A penality was awarded to {atk_team_name}. Who is going to kick it?"
@@ -281,10 +290,11 @@ class CLIDisplay:
                 + [f"{i + 1} - {name}" for i, (role, name) in enumerate(atk_assigments)]
             )
 
-            print(player_list)
+            await aprint(player_list)
 
-            q0_choice = await ainput("> ")
-
+            q0_choice = await controller(require_input=True)
+            if q0_choice is None:
+                raise TypeError("An user imput was expected, but None was found")
             try:
                 q0_int = int(q0_choice)
 
@@ -300,19 +310,21 @@ class CLIDisplay:
                 role, kicker_name = atk_assigments[kicker_idx]
                 kicker_placeholder = "{" + role + "}"
 
-                await ainput(_("You chose {} to kick the penalty").format(kicker_name))
+                await aprint(_("You chose {} to kick the penalty").format(kicker_name))
 
                 q0_remain = False
-            except ValueError:
-                clean_screen()
+            except (ValueError, TypeError):
+                await aprint(_("Invalid answer."))
+                await controller(require_input=False)
+                await clean_screen()
 
         assert kicker_name is not None and kicker_placeholder is not None
 
-        clean_screen()
+        await clean_screen()
 
-        print(self.display_header(), end="\n\n")
+        await aprint(self.render_header(), end="\n\n")
 
-        await ainput(
+        await aprint(
             format_phrase(
                 _(
                     "Now all the players and supporter of {def_team_name} must close their eyes or look away from the screen."
@@ -323,18 +335,20 @@ class CLIDisplay:
             )
         )
 
-        clean_screen()
+        await controller(require_input=False)
 
-        print(self.display_header(), end="\n\n")
+        await clean_screen()
+
+        await aprint(self.render_header(), end="\n\n")
 
         _kick_direction_name, kick_direction_id = None, None
         q1_remain = True
 
         while q1_remain:
-            print(KICK_OR_DIVE_SELECTION_TEXT_ART, end="\n\n")
-            print(position_text, end="\n\n")
+            await aprint(KICK_OR_DIVE_SELECTION_TEXT_ART, end="\n\n")
+            await aprint(position_text, end="\n\n")
 
-            print(
+            await aprint(
                 format_phrase(
                     _("{}, where are you kicking the ball?").format(kicker_placeholder),
                     team_atk,
@@ -343,8 +357,9 @@ class CLIDisplay:
                 )
             )
 
-            q1_choice = await ainput("> ")
-
+            q1_choice = await controller(require_input=True)
+            if q1_choice is None:
+                raise TypeError("An user input was expected, but None was found.")
             try:
                 q1_int = int(q1_choice)
                 if not 0 <= q1_int <= len(direction_names):
@@ -360,21 +375,20 @@ class CLIDisplay:
                 kick_direction_id = ALL_PENALTY_DIRECTIONS[kick_direction_index]
                 q1_remain = False
 
-            except ValueError:
-                await ainput(_("Invalid answer."))
-                clean_screen()
+            except (ValueError, TypeError):
+                await aprint(_("Invalid answer."))
+                await controller(require_input=False)
+                await clean_screen()
 
-        clean_screen()
+        await clean_screen()
+        await aprint(self.render_header(), end="\n\n")
+        await aprint(_("Everyone can look again at the screen"))
+        await controller(require_input=False)
 
-        print(self.display_header(), end="\n\n")
+        await clean_screen()
 
-        await ainput(_("Everyone can look again at the screen"))
-
-        clean_screen()
-
-        print(self.display_header(), end="\n\n")
-
-        await ainput(
+        await aprint(self.render_header(), end="\n\n")
+        await aprint(
             format_phrase(
                 _(
                     "Now all the players and supporter of {atk_team_name} must close their eyes or look away from the screen."
@@ -384,9 +398,10 @@ class CLIDisplay:
                 assigments,
             )
         )
-        clean_screen()
+        await controller(require_input=False)
 
-        print(self.display_header(), end="\n\n")
+        await clean_screen()
+        await aprint(self.render_header(), end="\n\n")
 
         _def_goalkeeper = assigments["def_goalkeeper"]
 
@@ -394,11 +409,11 @@ class CLIDisplay:
         q2_remain = True
 
         while q2_remain:
-            print(self.display_header(), end="\n\n")
-            print(KICK_OR_DIVE_SELECTION_TEXT_ART, end="\n\n")
-            print(position_text, end="\n\n")
+            await aprint(self.render_header(), end="\n\n")
+            await aprint(KICK_OR_DIVE_SELECTION_TEXT_ART, end="\n\n")
+            await aprint(position_text, end="\n\n")
 
-            print(
+            await aprint(
                 format_phrase(
                     _("{def_goalkeeper} where are you diving?"),
                     team_atk,
@@ -406,8 +421,9 @@ class CLIDisplay:
                     assigments,
                 )
             )
-            q2_choice = await ainput("> ")
-
+            q2_choice = await controller(require_input=True)
+            if q2_choice is None:
+                raise TypeError("An user input was expected, but None was found.")
             try:
                 q2_int = int(q2_choice)
 
@@ -422,29 +438,28 @@ class CLIDisplay:
 
                 save_direction_id = ALL_PENALTY_DIRECTIONS[save_position_idx]
                 q2_remain = False
-            except ValueError:
-                await ainput(_("Invalid answer."))
-                clean_screen()
+            except (ValueError, TypeError):
+                await aprint(_("Invalid answer."))
+                await controller(require_input=False)
+                await clean_screen()
 
-        clean_screen()
+        await clean_screen()
+        await aprint(self.render_header(), end="\n\n")
+        await aprint(_("Everyone can look again at the screen"))
+        await controller(require_input=False)
 
-        print(self.display_header(), end="\n\n")
-
-        await ainput(_("Everyone can look again at the screen"))
-
-        clean_screen()
+        await clean_screen()
 
         assert save_direction_id is not None
         assert kick_direction_id is not None
 
-        return (kicker_placeholder, kick_direction_id), (
-            "{def_goalkeeper}",
-            save_direction_id,
+        return PenaltyInteractionResult(
+            kicker_placeholder, kick_direction_id, "{def_goalie}", save_direction_id
         )
 
 
-def clean_screen():
-    print(CLEAR_CHAR)
+async def clean_screen():
+    await aprint(CLEAR_CHAR)
 
 
 def format_phrase(
@@ -477,7 +492,7 @@ def format_phrase(
 
 def format_goal_entry(goal: GoalStats):
     player_name = goal.author
-    minute = format_minute(goal.match_phase, goal.minute)
+    minute = format_minute(goal.time)
 
     match goal.goal_type:
         case "goal":
@@ -490,20 +505,20 @@ def format_goal_entry(goal: GoalStats):
             return f"{player_name} {minute}"
 
 
-def format_minute(phase: MatchPhase, minute: int):
+def format_minute(time: MatchTime):
     base_minute = 0
 
-    if phase > MatchPhase.FIRST_HALF:
+    if time.phase > MatchPhase.FIRST_HALF:
         base_minute += MatchPhase.FIRST_HALF.duration_minutes
-    if phase > MatchPhase.SECOND_HALF:
+    if time.phase > MatchPhase.SECOND_HALF:
         base_minute += MatchPhase.SECOND_HALF.duration_minutes
-    if phase > MatchPhase.FIRST_EXTRA_TIME:
+    if time.phase > MatchPhase.FIRST_EXTRA_TIME:
         base_minute += MatchPhase.FIRST_EXTRA_TIME.duration_minutes
-    if phase > MatchPhase.SECOND_EXTRA_TIME:
+    if time.phase > MatchPhase.SECOND_EXTRA_TIME:
         base_minute += MatchPhase.SECOND_EXTRA_TIME.duration_minutes
 
-    added_time = max(0, minute - phase.duration_minutes)
-    total_minute = base_minute + min(phase.duration_minutes, minute)
+    added_time = max(0, time.minute - time.phase.duration_minutes)
+    total_minute = base_minute + min(time.phase.duration_minutes, time.minute)
 
     if added_time > 0:
         return f"{total_minute}'+{added_time}"

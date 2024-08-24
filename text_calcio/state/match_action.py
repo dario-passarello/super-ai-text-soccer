@@ -1,20 +1,21 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Literal, Optional
+
+import attr
 
 
 from text_calcio.loaders.action import ActionBlueprint
+from text_calcio.state.match_time import MatchTime
 from text_calcio.state.penalty import Penalty
 from text_calcio.state.stadium import Stadium
 from text_calcio.state.team import Team
-from text_calcio.state.match_phase import MatchPhase
 
 
 ActionType = Literal["goal", "no_goal", "penalty", "own_goal"]
 
 
-@dataclass
+@attr.s(auto_attribs=True, frozen=True)
 class MatchAction:
     """
     An Action object represents a single goal attempt by one of the two teams
@@ -29,8 +30,7 @@ class MatchAction:
     """
 
     team_atk_id: Literal[0, 1]
-    phase: MatchPhase
-    minute: int
+    time: MatchTime
     type: ActionType
     goal_player: Optional[str]
     assist_player: Optional[str]
@@ -39,18 +39,6 @@ class MatchAction:
     player_assigments: dict[str, str]
     support_assigments: dict[str, str]
     penalty_info: Optional[Penalty] = None
-
-    def __post_init__(self):
-        if self.type == "penalty":
-            self.assist_player = None
-
-            if self.penalty_info is None:
-                self.goal_player = None
-            else:
-                self.goal_player = self.penalty_info.player_kicking
-
-        elif self.type == "own_goal":
-            self.assist_player = None
 
     def is_goal(self) -> bool:
         return self.goal_player is not None
@@ -65,13 +53,14 @@ class MatchAction:
         if not self.is_penalty_pending():
             raise RuntimeError("There is no penalty to kick")
 
-        self.penalty_info = penalty
-        self.assist_player = None
-
         if penalty.is_goal:
-            self.goal_player = penalty.player_kicking
+            goal_player = penalty.player_kicking
         else:
-            self.goal_player = None
+            goal_player = None
+
+        return attr.evolve(
+            self, penalty_info=penalty, assist_player=None, goal_player=goal_player
+        )
 
     def map_role_to_name(self, role: str):
         role = role.strip("{}")
@@ -90,9 +79,8 @@ class MatchAction:
 
     @staticmethod
     def create_from_blueprint(
-        action_response: ActionBlueprint,
-        phase: MatchPhase,
-        minute: int,
+        blueprint: ActionBlueprint,
+        game_time: MatchTime,
         atk_team_id: Literal[0, 1],
         teams: tuple[Team, Team],
         referee: str,
@@ -120,18 +108,23 @@ class MatchAction:
             "def_team_name": def_team.familiar_name,
         }
 
-        goal_player = action_response.scorer_player
-        assist_player = action_response.assist_player
+        goal_player = blueprint.scorer_player
+        assist_player = blueprint.assist_player
+
+        if blueprint.action_type == "penalty":
+            assist_player = None
+            goal_player = None
+        elif blueprint.action_type == "own_goal":
+            assist_player = None
 
         return MatchAction(
             atk_team_id,
-            phase,
-            minute,
-            action_response.action_type,
+            game_time,
+            blueprint.action_type,
             goal_player,
             assist_player,
-            action_response.player_evaluation,
-            action_response.phrases,
+            blueprint.player_evaluation,
+            blueprint.phrases,
             player_assignments,
             support_assigments,
         )

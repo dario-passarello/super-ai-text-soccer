@@ -1,13 +1,16 @@
 from __future__ import annotations
 
-from collections import defaultdict
 import random
-from typing import Optional, cast
+from typing import Any, Literal, Optional, cast
 
+import attr
+import cattrs
 import numpy as np
 
 from text_calcio.loaders.action import ActionBlueprint, ActionRequest
 from text_calcio.loaders.action_provider import AsyncActionProvider
+from text_calcio.loaders.serialization import Serializable
+from text_calcio.state.match_time import MatchTime
 from text_calcio.state.penalty import Penalty
 from text_calcio.state.stadium import Stadium
 from text_calcio.state.team import Team
@@ -15,12 +18,17 @@ from text_calcio.state.match_action import MatchAction, ActionType
 from text_calcio.state.match_config import MatchConfig
 from text_calcio.state.match_phase import MatchPhase
 
+from frozendict import frozendict
 
 # TODO: consider renaming "Added time" to "Stoppage time"/"Additional time" https://en.wikipedia.org/wiki/Association_football#Duration_and_tie-breaking_methods
 
 
-class Match:
+@attr.s(frozen=True)
+class Match(Serializable):
     """
+    Match is an immutable class that represent the state of the match
+    at a given game_clock time.
+
     The match is divided into several phases:
     - First half
     - Second half
@@ -52,8 +60,22 @@ class Match:
     - The Action object is tied to the Match and added to the list of actions.
     """
 
-    def __init__(
-        self,
+    home_team: Team = attr.ib()
+    away_team: Team = attr.ib()
+    game_clock: MatchTime = attr.ib()
+    stadium: Stadium = attr.ib()
+    referee: str = attr.ib()
+    action_provider: AsyncActionProvider = attr.ib(repr=False, metadata={"omit": True})
+    actions: tuple[MatchAction, ...] = attr.ib(default=attr.Factory(tuple))
+    stoppage_times: frozendict[MatchPhase, float] = attr.ib(
+        factory=lambda: frozendict({p: 0.0 for p in list(MatchPhase)})
+    )
+    finished: bool = attr.ib(default=False)
+    config: MatchConfig = attr.ib(factory=MatchConfig)
+
+    @classmethod
+    def initialize_new_match(
+        cls,
         home_team: Team,
         away_team: Team,
         stadium: Stadium,
@@ -61,43 +83,34 @@ class Match:
         action_provider: AsyncActionProvider,
         config: Optional[MatchConfig] = None,
     ):
-        self.config = config or MatchConfig()
+        return Match(
+            home_team,
+            away_team,
+            MatchTime(),
+            stadium,
+            referee,
+            action_provider,
+            config=config or MatchConfig(),
+        )
 
-        self.teams = (home_team, away_team)
-        self.home_team = home_team
-        self.away_team = away_team
-
-        # TODO: maybe less hardcoded/hacky way to test specific phases?
-        if self.config.start_from_penalties:
-            self.curr_phase: MatchPhase = MatchPhase.PENALTIES
-        else:
-            self.curr_phase: MatchPhase = MatchPhase.FIRST_HALF
-
-        self.curr_minute: int = 1
-        self.stadium = stadium
-        self.referee = referee
-        self.actions: list[MatchAction] = []
-        self.action_provider = action_provider
-        self.action_configs = []
-        self.added_time: dict[MatchPhase, float] = defaultdict(float)
-        self.finished = False
-
-    def get_added_time_minutes(self, phase: Optional[MatchPhase] = None) -> int:
+    def get_stoppage_time_minutes(self, phase: Optional[MatchPhase] = None) -> int:
         """
-        Returns the added time minutes for the current phase or for a specific phase
+        Returns the stoppage time minutes for the current phase or for a specific phase.
+        The stoppage time is the time added for recovering lost minutes during the game for
+        events like goals, penalties and VAR reviews rounded to the nearest integer.
 
         Parameters
         ---
         phase : MatchPhase or None
-            The phase of which you want to get the current added time. If left None
+            The phase of which you want to get the current stoppage time. If left None
             it returns the added times of the current phase.
 
         Returns
         ---
         result : int
-            The added time minutes of the desired phase
+            The stoppage time minutes of the desired phase
         """
-        return int(round(self.added_time[phase or self.curr_phase]))
+        return int(round(self.stoppage_times[phase or self.game_clock.phase]))
 
     def get_score(self, hide_latest_result: bool = False) -> tuple[int, int]:
         """
@@ -122,6 +135,17 @@ class Match:
 
         return cast(tuple[int, int], tuple(score))
 
+    def get_teams(self):
+        """
+        Returns the home and away teams.
+
+        Returns
+        ---
+        result : tuple[Team, Team]
+            A tuple containing the home team and the away team.
+        """
+        return self.home_team, self.away_team
+
     def get_current_action(self) -> Optional[MatchAction]:
         """
         Gets the action happening at the current minute and current phase (curr_minute, curr_phase), if present
@@ -132,7 +156,7 @@ class Match:
             Returns the current action, or None if no action is happening at the current minute and phase
         """
         for action in self.actions:
-            if action.minute == self.curr_minute and action.phase == self.curr_phase:
+            if action.time == self.game_clock:
                 return action
 
         return None
@@ -141,9 +165,7 @@ class Match:
         actions = []
 
         for action in self.actions:
-            if action.phase < self.curr_phase or (
-                action.phase == self.curr_phase and action.minute <= self.curr_minute
-            ):
+            if action.time <= self.game_clock:
                 actions.append(action)
 
         return actions
@@ -151,7 +173,7 @@ class Match:
     def is_penalty_pending(self) -> bool:
         """
         Checks if a penalty has to be kicked at the current state before continuing with the next() method.
-        If the result of this function is True a penalty must be kicked before continuing.
+        If the result of this functio    def from_dict(self)n is True a penalty must be kicked before continuing.
 
         Returns
         ---
@@ -167,18 +189,19 @@ class Match:
 
         return curr_action is not None and curr_action.is_penalty_pending()
 
-    async def next(self) -> None:
+    async def next(self) -> Match:
         if self.is_penalty_pending():
             raise RuntimeError("Penalty pending, could not advance to next action")
 
-        self.curr_minute += 1
+        next_state = attr.evolve(self, game_clock=self.game_clock.add_minutes(1))
+        stoppage_time = next_state.get_stoppage_time_minutes()
 
-        if self.curr_phase == MatchPhase.PENALTIES:
-            await self.handle_penalties()
-        elif self.is_current_phase_finished():
-            self.handle_phase_transition()
+        if next_state.game_clock.phase == MatchPhase.PENALTIES:
+            return await next_state.handle_penalties()
+        elif next_state.game_clock.is_phase_time_expired(stoppage_time):
+            return next_state.handle_phase_transition()
         else:
-            await self.perform_action()
+            return await next_state.perform_action()
 
     async def handle_penalties(self):
         score_1, score_2 = self.get_score()
@@ -186,12 +209,12 @@ class Match:
         # TODO This may not work in case of sudden death (tie after 5 penalties)
         # penalties shootout has completely different rules
         # Calculate who kicks now
-        penalty_kick_count = (self.curr_minute - 1) // 2
+        penalty_kick_count = (self.game_clock.minute - 1) // 2
         penalties_remaining = max(
             self.config.penalties_shoot_count - penalty_kick_count, 1
         )
 
-        curr_team_kicking = (self.curr_minute + 1) % 2
+        curr_team_kicking = cast(Literal[0, 1], (self.game_clock.minute + 1) % 2)
 
         # Calculate penalty win condition
         score_curr_team = score_1 if curr_team_kicking == 0 else score_2
@@ -199,21 +222,18 @@ class Match:
 
         if score_curr_team + penalties_remaining < score_other_team:
             # If it is impossible to win
-            self.finished = True
+            return attr.evolve(self, finished=True)
         else:
             penalty_blueprint = ActionBlueprint("penalty", False, [], {}, None, None)
-
-            self.actions.append(
-                MatchAction.create_from_blueprint(
-                    penalty_blueprint,
-                    self.curr_phase,
-                    self.curr_minute,
-                    curr_team_kicking,
-                    self.teams,
-                    self.referee,
-                    self.stadium,
-                )
+            new_action = MatchAction.create_from_blueprint(
+                penalty_blueprint,
+                self.game_clock,
+                curr_team_kicking,
+                (self.home_team, self.away_team),
+                self.referee,
+                self.stadium,
             )
+            return attr.evolve(self, actions=self.actions + (new_action,))
 
     async def prefetch_blueprints(self, n=1):
         for i in range(n):
@@ -240,54 +260,59 @@ class Match:
         curr_action = self.get_current_action()
 
         assert curr_action is not None
-
-        curr_action.kick_penalty(penalty)
+        new_action = curr_action.kick_penalty(penalty)
+        action_list = list(self.actions)
+        action_list[action_list.index(curr_action)] = new_action
+        return attr.evolve(self, actions=tuple(action_list))
 
     def is_match_finished(self):
         return self.finished
 
     def is_current_phase_finished(self) -> bool:
         return (
-            self.curr_minute
-            > self.curr_phase.duration_minutes + self.get_added_time_minutes()
+            self.game_clock.minute
+            > self.game_clock.phase.duration_minutes + self.get_stoppage_time_minutes()
         )
 
     def handle_phase_transition(self):
-        match self.curr_phase:
+        match self.game_clock.phase:
             case MatchPhase.FIRST_HALF:
-                self.curr_minute = 1
-                self.curr_phase = MatchPhase.SECOND_HALF
+                return attr.evolve(self, game_clock=self.game_clock.next_phase())
             case MatchPhase.SECOND_HALF:
-                self.handle_second_half_end()
+                return self.handle_second_half_end()
             case MatchPhase.FIRST_EXTRA_TIME:
-                self.curr_minute = 1
-                self.curr_phase = MatchPhase.SECOND_EXTRA_TIME
+                return attr.evolve(self, game_clock=self.game_clock.next_phase())
             case MatchPhase.SECOND_EXTRA_TIME:
-                self.handle_extra_time_end()
+                return self.handle_extra_time_end()
+            case MatchPhase.PENALTIES:
+                raise ValueError("Cannot Transition phase after PENALTIES")
+            case _:
+                raise ValueError(
+                    "This block should not be reached. Something went really wrong"
+                )
 
     def handle_second_half_end(self):
         if self.config.tie_breaker == "allow_tie":
-            self.finished = True
+            return attr.evolve(self, finished=True)
         elif self.is_tie():
-            self.curr_minute = 1
             if self.config.tie_breaker == "on_tie_extra_time_and_penalties":
-                self.curr_phase = MatchPhase.FIRST_EXTRA_TIME
-            elif self.config.tie_breaker == "on_tie_penalties":
-                self.curr_phase = MatchPhase.PENALTIES
+                next_phase = MatchPhase.FIRST_EXTRA_TIME
+            else:  # on_tie_penalties
+                next_phase = MatchPhase.PENALTIES
+            return attr.evolve(self, game_clock=MatchTime(next_phase, 1))
         else:
-            self.finished = True
+            return attr.evolve(self, finished=True)
 
     def handle_extra_time_end(self):
         if self.is_tie():
-            self.curr_minute = 1
-            self.curr_phase = MatchPhase.PENALTIES
+            return attr.evolve(self, game_clock=MatchTime(MatchPhase.PENALTIES, 1))
         else:
-            self.finished = True
+            return attr.evolve(self, finished=True)
 
     def determine_action_probability(self):
-        if self.curr_minute >= self.curr_phase.duration_minutes:
+        if self.game_clock.minute >= self.game_clock.phase.duration_minutes:
             return self.config.added_time_action_probability
-        elif self.curr_phase in [
+        elif self.game_clock.phase in [
             MatchPhase.FIRST_EXTRA_TIME,
             MatchPhase.SECOND_EXTRA_TIME,
         ]:
@@ -297,8 +322,8 @@ class Match:
 
     def is_last_minute_of_current_phase(self) -> bool:
         return (
-            self.curr_minute
-            == self.curr_phase.duration_minutes + self.get_added_time_minutes()
+            self.game_clock.minute
+            == self.game_clock.phase.duration_minutes + self.get_stoppage_time_minutes()
         )
 
     def should_perform_action(self, action_probability):
@@ -307,7 +332,7 @@ class Match:
             or self.is_last_minute_of_current_phase()
         )
 
-    def determine_attacking_team(self):
+    def determine_attacking_team(self) -> Literal[0, 1]:
         score_1, score_2 = self.get_score()
 
         if self.is_last_minute_of_current_phase() and not self.is_tie():
@@ -317,47 +342,78 @@ class Match:
             return random.choice([0, 1])
 
     def update_added_time(self, blueprint):
-        if self.curr_minute <= self.curr_phase.duration_minutes:
+        if self.game_clock.minute <= self.game_clock.phase.duration_minutes:
+            stoppage_time_change = 0.0
             if blueprint.action_type == "goal":
-                self.added_time[self.curr_phase] += np.random.uniform(
+                stoppage_time_change += np.random.uniform(
                     self.config.goal_added_time_min,
                     self.config.goal_added_time_max,
                 )
             elif blueprint.action_type == "penalty":
-                self.added_time[self.curr_phase] += np.random.uniform(
+                stoppage_time_change += np.random.uniform(
                     self.config.penalty_added_time_min,
                     self.config.penalty_added_time_max,
                 )
             if blueprint.use_var:
-                self.added_time[self.curr_phase] += np.random.uniform(
+                stoppage_time_change += np.random.uniform(
                     self.config.var_added_time_min,
                     self.config.var_added_time_max,
                 )
+            new_stoppage_time = (
+                self.stoppage_times[self.game_clock.phase] + stoppage_time_change
+            )
+
+            return frozendict(
+                {**self.stoppage_times, self.game_clock.phase: new_stoppage_time}
+            )
+        else:
+            return self.stoppage_times
 
     async def perform_action(self):
         action_probability = self.determine_action_probability()
 
         if self.should_perform_action(action_probability):
             await self.prefetch_blueprints()
-            blueprint = await self.action_provider.get()
 
             atk_team = self.determine_attacking_team()
 
-            self.update_added_time(blueprint)
+            blueprint = await self.action_provider.get()
 
-            self.actions.append(
-                MatchAction.create_from_blueprint(
-                    blueprint,
-                    self.curr_phase,
-                    self.curr_minute,
-                    atk_team,
-                    self.teams,
-                    self.referee,
-                    self.stadium,
-                )
+            new_stoppage_times = self.update_added_time(blueprint)
+            new_action = MatchAction.create_from_blueprint(
+                blueprint,
+                self.game_clock,
+                atk_team,
+                (self.home_team, self.away_team),
+                self.referee,
+                self.stadium,
             )
+            return attr.evolve(
+                self,
+                stoppage_times=new_stoppage_times,
+                actions=self.actions + (new_action,),
+            )
+        else:
+            return self
 
     def is_tie(self):
         score_1, score_2 = self.get_score()
 
         return score_1 == score_2
+
+    def serialize(self) -> dict[str, Any]:
+        return cattrs.unstructure(self)
+
+    @classmethod
+    def deserialize(cls, data: dict[str, Any]):
+        return cattrs.structure(data, cls)
+
+
+def custom_unstructure(instance):
+    # Use attr.asdict but exclude the 'secret' field
+    return attr.asdict(
+        instance, filter=lambda attr, value: attr.name != "action_provider"
+    )
+
+
+cattrs.register_unstructure_hook(Match, custom_unstructure)

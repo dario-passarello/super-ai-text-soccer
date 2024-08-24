@@ -32,7 +32,7 @@ async def execute():
     action_generator = AsyncAIActionLoader(client)
 
     home_team = Team(
-        "A.C. FORGIA", "FORGIA", "FOR", "blue", ["Kien", "Dani", "Dario", "Dav", "Max"]
+        "A.C. FORGIA", "FORGIA", "FOR", "blue", ("Kien", "Dani", "Dario", "Dav", "Max")
     )
 
     away_team = Team(
@@ -40,7 +40,7 @@ async def execute():
         "PASTA",
         "PAS",
         "red",
-        ["Gio", "Giammy", "Pit", "Stef", "Paso"],
+        ("Gio", "Giammy", "Pit", "Stef", "Paso"),
     )
 
     config = MatchConfig.from_json(
@@ -48,7 +48,7 @@ async def execute():
     )
 
     with AsyncQueueActionProvider(action_generator) as provider:
-        match = Match(
+        match = Match.initialize_new_match(
             home_team=home_team,
             away_team=away_team,
             stadium=random_stadium,

@@ -1,14 +1,16 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
-from typing import Literal, Optional
+from typing import Literal, Optional, cast
+
+import attr
 
 from text_calcio.state.match import MatchAction, Match
 from text_calcio.state.match_phase import MatchPhase
+from text_calcio.state.match_time import MatchTime
 from text_calcio.state.team import Team
 
 
-@dataclass
+@attr.s(frozen=True, auto_attribs=True)
 class MatchStats:
     home_team_stats: TeamStats
     away_team_stats: TeamStats
@@ -21,10 +23,9 @@ class MatchStats:
         )
 
 
-@dataclass
+@attr.s(frozen=True, auto_attribs=True)
 class TeamStats:
-    updated_at_phase: MatchPhase
-    updated_at_minute: int
+    updated_at: MatchTime
     team: Team
     score: int
     n_attempts: int
@@ -35,12 +36,13 @@ class TeamStats:
     @staticmethod
     def create_from_match(match: Match, team_id: Literal[0, 1]) -> TeamStats:
         all_actions = match.get_actions_up_to_current_minute()
-        team = match.teams[team_id]
+        team = match.get_teams()[team_id]
 
         n_attempts = sum(
             1
             for action in all_actions
-            if action.team_atk_id == team_id and action.phase != MatchPhase.PENALTIES
+            if action.team_atk_id == team_id
+            and action.time.phase != MatchPhase.PENALTIES
         )
 
         score = match.get_score()[team_id]
@@ -50,6 +52,8 @@ class TeamStats:
             for action in all_actions
             if action.team_atk_id == team_id and action.is_goal()
         ]
+
+        goals = cast(list[GoalStats], list(filter(lambda x: x is not None, goals)))
 
         ball_possession_percentage = (
             (n_attempts / len(all_actions) * 100) if all_actions else 0
@@ -68,8 +72,7 @@ class TeamStats:
                     player_evaluation[player_name] += score
 
         return TeamStats(
-            updated_at_phase=match.curr_phase,
-            updated_at_minute=match.curr_minute,
+            updated_at=match.game_clock,
             team=team,
             score=score,
             n_attempts=n_attempts,
@@ -79,11 +82,10 @@ class TeamStats:
         )
 
 
-@dataclass
+@attr.s(frozen=True, auto_attribs=True)
 class GoalStats:
     author: str
-    match_phase: MatchPhase
-    minute: int
+    time: MatchTime
     assist: Optional[str]
     goal_type: Literal["goal", "own_goal", "penalty"]
 
@@ -103,8 +105,7 @@ class GoalStats:
 
         return GoalStats(
             author=scorer_player,
-            match_phase=action.phase,
-            minute=action.minute,
+            time=action.time,
             assist=assist_player,
             goal_type=action.type,
         )

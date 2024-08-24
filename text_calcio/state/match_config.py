@@ -1,20 +1,22 @@
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Literal
 
+import attr
 import numpy as np
 
 
 import json
 
+from text_calcio.state.match_phase import MatchPhase
 
-@dataclass
+
+@attr.s(frozen=True, auto_attribs=True)
 class MatchConfig:
     tie_breaker: Literal[
         "allow_tie", "on_tie_extra_time_and_penalties", "on_tie_penalties"
     ] = "on_tie_extra_time_and_penalties"
-    start_from_penalties: bool = False
+    start_from_phase: MatchPhase = MatchPhase.FIRST_HALF
     goal_added_time_min: float = 0.5
     goal_added_time_max: float = 1.5
     penalty_added_time_min: float = 0.75
@@ -47,14 +49,18 @@ class MatchConfig:
             )
 
         # Verify all probabilities are not more than 1
-        for attr, value in vars(self).items():
-            if attr.endswith("_probability") and value > 1:
+        for key, value in vars(self).items():
+            if key.endswith("_probability") and value > 1:
                 raise ValueError(
-                    f"Config '{attr}' must be less than or equal to 1, but it is {value}"
+                    f"Config '{key}' must be less than or equal to 1, but it is {value}"
                 )
 
     @classmethod
     def from_json(cls, json_file: str):
         with open(json_file, "r") as f:
             config_data = json.load(f)
+        # Retrieve MatchPhase id stored in config to instatiate correct MatchPhase
+        config_data["start_from_phase"] = MatchPhase.get_phase_by_id(
+            int(config_data["start_from_phase"])
+        )
         return cls(**config_data)
