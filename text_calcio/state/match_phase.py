@@ -1,41 +1,18 @@
 from __future__ import annotations
 
-from abc import ABCMeta
-from enum import Enum, EnumMeta
+from enum import Enum
 from functools import total_ordering
 
 import cattrs
 
 
-class ABCEnumMeta(ABCMeta, EnumMeta):
-    """
-    Hack
-    """
-
-    pass
-
-
 @total_ordering
 class MatchPhase(Enum):
-    FIRST_HALF = "FIRST_HALF"
-    SECOND_HALF = "SECOND_HALF"
-    FIRST_EXTRA_TIME = "FIRST_EXTRA_TIME"
-    SECOND_EXTRA_TIME = "SECOND_EXTRA_TIME"
-    PENALTIES = "PENALTIES"
-
-    def __init__(self, id) -> None:
-        self.id = id
-        match id:
-            case "FIRST_HALF":
-                self.duration_minutes = 45
-            case "SECOND_HALF":
-                self.duration_minutes = 45
-            case "FIRST_EXTRA_TIME":
-                self.duration_minutes = 15
-            case "SECOND_EXTRA_TIME":
-                self.duration_minutes = 15
-            case "PENALTIES":
-                self.duration_minutes = 0
+    FIRST_HALF = 0
+    SECOND_HALF = 1
+    FIRST_EXTRA_TIME = 2
+    SECOND_EXTRA_TIME = 3
+    PENALTIES = 4
 
     def __contains__(self, value: object) -> bool:
         if hasattr(value, "phase"):
@@ -50,10 +27,25 @@ class MatchPhase(Enum):
         if not isinstance(other, MatchPhase):
             return NotImplemented
 
-        return self.id < other.id
+        return self.value < other.value
 
     def from_name(self, name: str):
-        MatchPhase[self.name]
+        return MatchPhase[name]
+
+    @property
+    def duration_minutes(self) -> int:
+        match self:
+            case self.FIRST_HALF:
+                return 45
+            case self.SECOND_HALF:
+                return 45
+            case self.FIRST_EXTRA_TIME:
+                return 15
+            case self.SECOND_EXTRA_TIME:
+                return 15
+            case self.PENALTIES:
+                return 0
+        return 0
 
     @classmethod
     def get_phase_by_id(cls, id: int):
@@ -64,10 +56,18 @@ class MatchPhase(Enum):
             )
         return list(cls)[id]
 
-    def next_phase(self):
+    def next_phase(self) -> MatchPhase:
         if self == MatchPhase.PENALTIES:
             raise ValueError("No more phases after PENALTIES")
-        return MatchPhase.get_phase_by_id(self.id + 1)
+        match self:
+            case self.FIRST_HALF:
+                return self.SECOND_HALF
+            case self.SECOND_HALF:
+                return self.FIRST_EXTRA_TIME
+            case self.FIRST_EXTRA_TIME:
+                return self.SECOND_EXTRA_TIME
+            case self.SECOND_EXTRA_TIME:
+                return self.PENALTIES
 
 
 # Hooks used to register globally how to handle serialization and deseriaziation for this function
