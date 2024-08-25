@@ -7,7 +7,6 @@ from typing import Optional
 from aioconsole import aprint
 from text_calcio.loaders.action import ActionBlueprint, ActionRequest
 from text_calcio.loaders.ai.action_loader import AsyncActionLoader
-from text_calcio.loaders.ai.action_loader import AsyncAIActionLoader
 
 
 class AsyncActionProvider(ABC):

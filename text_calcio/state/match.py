@@ -8,8 +8,7 @@ import cattrs
 import yaml
 import numpy as np
 
-from text_calcio.loaders.action import ActionBlueprint, ActionRequest
-from text_calcio.loaders.action_provider import AsyncActionProvider
+from text_calcio.loaders.action import ActionBlueprint
 from text_calcio.loaders.serialization import Serializable
 from text_calcio.state.match_time import MatchTime
 from text_calcio.state.penalty import Penalty
@@ -131,6 +130,27 @@ class Match(Serializable):
 
         return cast(tuple[int, int], tuple(score))
 
+    def get_score_at(self, minute: int) -> tuple[int, int]:
+        """
+        Returns the score at a given minute.
+
+        Parameters
+        ---
+        minute : int
+            The minute at which to get the score.
+
+        Returns
+        ---
+        tuple[int, int]: Goals scored by (home_team, away_team).
+        """
+        score = [0, 0]
+
+        for action in self.actions:
+            if action.time.minute <= minute and action.is_goal():
+                score[action.team_atk_id] += 1
+
+        return cast(tuple[int, int], tuple(score))
+
     def get_teams(self):
         """
         Returns the home and away teams.
@@ -141,6 +161,16 @@ class Match(Serializable):
             A tuple containing the home team and the away team.
         """
         return self.home_team, self.away_team
+
+    def get_absolute_minute(self):
+        return self.game_clock.absolute_minute()
+
+    def get_actions_in_time_range(self, start_minute: int, end_minute: int):
+        return [
+            action
+            for action in self.actions
+            if start_minute <= action.get_absolute_minute() <= end_minute
+        ]
 
     def get_current_action(self) -> Optional[MatchAction]:
         """
@@ -156,6 +186,25 @@ class Match(Serializable):
                 return action
 
         return None
+
+    def get_actions_at(self, minute: int) -> list[MatchAction]:
+        return [
+            action for action in self.actions if action.time.absolute_minute() == minute
+        ]
+
+    def get_last_action_at(self, minute: int) -> Optional[MatchAction]:
+        return (
+            actions[-1]
+            if (actions := self.get_actions_at(minute)) is not None
+            else None
+        )
+
+    def get_phase_at(self, minute: int) -> Optional[MatchPhase]:
+        return (
+            action.time.phase
+            if (action := self.get_last_action_at(minute)) is not None
+            else None
+        )
 
     def get_actions_up_to_current_minute(self) -> list[MatchAction]:
         actions = []
@@ -186,6 +235,8 @@ class Match(Serializable):
         return curr_action is not None and curr_action.is_penalty_pending()
 
     async def next(self) -> Match:
+        print(self.get_absolute_minute())
+
         if self.is_penalty_pending():
             raise RuntimeError("Penalty pending, could not advance to next action")
 

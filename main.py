@@ -11,7 +11,7 @@ from text_calcio.loaders.flavor import load_flavors
 from text_calcio.state.match import Match, MatchConfig
 from text_calcio.state.team import Team
 
-from text_calcio.test_controller import TestController, TestLoader
+from text_calcio.test.test_controller import TestController, TestLoader
 
 
 def main():
@@ -30,8 +30,6 @@ async def execute():
 
     random_stadium = random.choice(stadiums)
     random_referee = random.choice(referees)
-
-    action_generator = TestLoader()  # AsyncAIActionLoader(client)
 
     home_team = Team(
         "A.C. FORGIA", "FORGIA", "FOR", "blue", ("Kien", "Dani", "Dario", "Dav", "Max")

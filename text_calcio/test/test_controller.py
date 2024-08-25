@@ -1,21 +1,19 @@
 from __future__ import annotations
 
 import asyncio
+import random
 from dataclasses import dataclass
 from typing import Literal, Optional
 
-from aioconsole import ainput, aprint
 import yaml
+from aioconsole import ainput, aprint
 
-from text_calcio.cli.display import clean_screen, CLIDisplay
-from text_calcio.state.match import Match, Penalty
-
-from text_calcio.loaders.action import ActionRequest
+from text_calcio.cli.display import CLIDisplay, clean_screen
 from text_calcio.loaders.action import ActionBlueprint, ActionRequest, AsyncActionLoader
-
-import random
-
+from text_calcio.state.match import Match, Penalty
 from text_calcio.state.penalty import ALL_PENALTY_DIRECTIONS
+
+from text_calcio.test.test_display import TestDisplay
 
 
 class TestLoader(AsyncActionLoader):
@@ -48,6 +46,7 @@ class TestController:
     ) -> None:
         self.match = match
         self.config = config or TestController.Config()
+        self.display = TestDisplay()
 
     async def __call__(self) -> Optional[str]:
         pass
@@ -69,19 +68,19 @@ class TestController:
         while not self.match_finished():
             await self.continue_until_input_required()
 
+            await self.display.display_match(self.match)
+
             if self.match_waiting_for_input():
                 await self.handle_penalty()
 
-        print("Match finished")
+        input()
+
         print(self.match.to_yaml())
         print(self.match)
-        return self.match
 
     async def handle_penalty(self):
         if not self.match_waiting_for_input():
             raise RuntimeError("No penalty to handle")
-
-        print("Handling penalty")
 
         current_action = self.current_action()
 
@@ -97,17 +96,3 @@ class TestController:
         penalty = Penalty.create_auto_penalty(player_kicking, goalkeeper)
 
         self.match = self.match.kick_penalty(penalty)
-        self.match = await self.match.next()
-
-        print("Penalty handled", penalty)
-
-        # penalty_result = await self.display.penalty_interaction(self)
-
-        # penalty = Penalty.create_player_kicked_penalty(
-        #     penalty_result.player_kicking,
-        #     penalty_result.player_saving,
-        #     penalty_result.kick_direction,
-        #     penalty_result.save_direction,
-        # )
-
-        # self.match = self.match.kick_penalty(penalty)

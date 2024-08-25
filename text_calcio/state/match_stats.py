@@ -96,9 +96,9 @@ class GoalStats:
 
         assert action.goal_player is not None and action.type != "no_goal"
 
-        scorer_player = action.map_role_to_name(action.goal_player)
+        scorer_player = action.get_name_from_placeholder(action.goal_player)
         assist_player = (
-            action.map_role_to_name(action.assist_player)
+            action.get_name_from_placeholder(action.assist_player)
             if action.assist_player
             else None
         )

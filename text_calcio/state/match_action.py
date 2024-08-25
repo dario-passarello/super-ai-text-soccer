@@ -5,11 +5,8 @@ from typing import Literal, Optional
 import attr
 
 
-from text_calcio.loaders.action import ActionBlueprint
 from text_calcio.state.match_time import MatchTime
 from text_calcio.state.penalty import Penalty
-from text_calcio.state.stadium import Stadium
-from text_calcio.state.team import Team
 
 
 ActionType = Literal["goal", "no_goal", "penalty", "own_goal"]
@@ -58,13 +55,18 @@ class MatchAction:
             self, penalty=penalty, assist_player=None, goal_player=goal_player
         )
 
-    def map_role_to_name(self, role: str):
-        role = role.strip("{}")
+    def get_name_from_placeholder(self, role: str):
+        return self.placeholders_to_names_map()[role.strip("{}")]
 
-        return self.get_all_assigments()[role]
+    def get_placeholder_from_name(self, name: str):
+        return self.names_to_placeholders_map()[name]
 
-    def get_all_assigments(self):
+    def placeholders_to_names_map(self):
         return {**self.player_assignments, **self.support_assignments}
+
+    # TODO: this might have issues if the same player name is used for multiple roles/teams
+    def names_to_placeholders_map(self):
+        return {v: k for k, v in self.placeholders_to_names_map().items()}
 
     def get_atk_players_assignments(self):
         return {
@@ -72,3 +74,6 @@ class MatchAction:
             for placeholder, name in self.player_assignments.items()
             if "atk_" in placeholder
         }
+
+    def get_absolute_minute(self):
+        return self.time.absolute_minute()

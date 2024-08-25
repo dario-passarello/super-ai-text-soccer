@@ -165,7 +165,7 @@ class CLIDisplay:
             delta_evals = action.players_evaluation
             # Replace role placeholder with names
             delta_evals = {
-                action.map_role_to_name(role): delta_eval
+                action.get_name_from_placeholder(role): delta_eval
                 for role, delta_eval in delta_evals.items()
             }
             delta_evals = defaultdict(int, delta_evals)
@@ -214,7 +214,7 @@ class CLIDisplay:
         for i, phrase in enumerate(last_action.sentences):
             formatted_phrases.append(
                 format_phrase(
-                    phrase, team_atk, team_def, last_action.get_all_assigments()
+                    phrase, team_atk, team_def, last_action.placeholders_to_names_map()
                 )
             )
 
@@ -243,7 +243,7 @@ class CLIDisplay:
         last_action = self.match.get_current_action()
         if last_action is None:
             raise RuntimeError("No penalty found")
-        assigments = last_action.get_all_assigments()
+        assigments = last_action.placeholders_to_names_map()
         home_team = self.match.home_team
         away_team = self.match.away_team
 
