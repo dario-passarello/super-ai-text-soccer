@@ -5,7 +5,6 @@ from openai import AsyncOpenAI
 from dotenv import load_dotenv
 
 from text_calcio.cli.controller import CLIController
-from text_calcio.loaders.action_provider import AsyncQueueActionProvider
 from text_calcio.loaders.ai.action_loader import AsyncAIActionLoader
 from text_calcio.loaders.flavor import load_flavors
 from text_calcio.state.match import Match, MatchConfig
@@ -47,18 +46,16 @@ async def execute():
         os.path.join(os.path.dirname(__file__), "text_calcio/resources/config.json")
     )
 
-    with AsyncQueueActionProvider(action_generator) as provider:
-        match = Match.initialize_new_match(
-            home_team=home_team,
-            away_team=away_team,
-            stadium=random_stadium,
-            referee=random_referee,
-            action_provider=provider,
-            config=config,
-        )
+    match = Match.initialize_new_match(
+        home_team=home_team,
+        away_team=away_team,
+        stadium=random_stadium,
+        referee=random_referee,
+        config=config,
+    )
 
-        controller = CLIController(match)
-        await controller.run()
+    controller = CLIController(match, action_generator)
+    await controller.run()
 
 
 if __name__ == "__main__":

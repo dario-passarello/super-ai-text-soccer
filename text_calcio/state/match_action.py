@@ -32,6 +32,7 @@ class MatchAction:
     team_atk_id: Literal[0, 1]
     time: MatchTime
     type: ActionType
+    use_var: bool
     goal_player: Optional[str]
     assist_player: Optional[str]
     players_evaluation: dict[str, int]
@@ -121,6 +122,7 @@ class MatchAction:
             atk_team_id,
             game_time,
             blueprint.action_type,
+            blueprint.use_var,
             goal_player,
             assist_player,
             blueprint.player_evaluation,

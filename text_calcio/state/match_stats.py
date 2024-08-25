@@ -35,7 +35,7 @@ class TeamStats:
 
     @staticmethod
     def create_from_match(match: Match, team_id: Literal[0, 1]) -> TeamStats:
-        all_actions = match.get_actions_up_to_current_minute()
+        all_actions = match.get_actions_up_to_minute()
         team = match.get_teams()[team_id]
 
         n_attempts = sum(

@@ -7,8 +7,7 @@ import attr
 import cattrs
 import numpy as np
 
-from text_calcio.loaders.action import ActionBlueprint, ActionRequest
-from text_calcio.loaders.action_provider import AsyncActionProvider
+from text_calcio.loaders.action import ActionBlueprint, ActionRequest, AsyncActionLoader
 from text_calcio.loaders.serialization import Serializable
 from text_calcio.state.match_time import MatchTime
 from text_calcio.state.penalty import Penalty
@@ -65,7 +64,6 @@ class Match(Serializable):
     game_clock: MatchTime = attr.ib()
     stadium: Stadium = attr.ib()
     referee: str = attr.ib()
-    action_provider: AsyncActionProvider = attr.ib(repr=False, metadata={"omit": True})
     actions: tuple[MatchAction, ...] = attr.ib(default=attr.Factory(tuple))
     stoppage_times: frozendict[MatchPhase, float] = attr.ib(
         factory=lambda: frozendict({p: 0.0 for p in list(MatchPhase)})
@@ -80,7 +78,6 @@ class Match(Serializable):
         away_team: Team,
         stadium: Stadium,
         referee: str,
-        action_provider: AsyncActionProvider,
         config: Optional[MatchConfig] = None,
     ):
         return Match(
@@ -89,7 +86,6 @@ class Match(Serializable):
             MatchTime(),
             stadium,
             referee,
-            action_provider,
             config=config or MatchConfig(),
         )
 
@@ -127,7 +123,9 @@ class Match(Serializable):
         tuple[int, int]: Goals scored by (home_team, away_team).
         """
         score = [0, 0]
-        latest_action = self.get_current_action() if hide_latest_result else None
+        latest_action = (
+            self.get_action_from_game_clock() if hide_latest_result else None
+        )
 
         for action in self.actions:
             if action.is_goal() and action is not latest_action:
@@ -146,26 +144,42 @@ class Match(Serializable):
         """
         return self.home_team, self.away_team
 
-    def get_current_action(self) -> Optional[MatchAction]:
+    def get_action_from_game_clock(
+        self, game_clock: Optional[MatchTime] = None
+    ) -> Optional[MatchAction]:
         """
-        Gets the action happening at the current minute and current phase (curr_minute, curr_phase), if present
+        Gets the action happening at the current minute and current phase (curr_minute, curr_phase), or
+        at a specified time
+
+        Parameters
+        ---
+        game_clock : MatchTime or None
+            The match time when the requested action happened. If not specified the current match time is
+            used.
 
         Returns
         ---
         result : Action or None
-            Returns the current action, or None if no action is happening at the current minute and phase
+            Returns the current action, or None if no action is happening at the specified MatchTime
         """
+
+        time = game_clock or self.game_clock
+
         for action in self.actions:
-            if action.time == self.game_clock:
+            if action.time == time:
                 return action
 
         return None
 
-    def get_actions_up_to_current_minute(self) -> list[MatchAction]:
+    def get_actions_up_to_minute(
+        self, game_clock: Optional[MatchTime] = None
+    ) -> list[MatchAction]:
         actions = []
 
+        time = game_clock or self.game_clock
+
         for action in self.actions:
-            if action.time <= self.game_clock:
+            if action.time <= time:
                 actions.append(action)
 
         return actions
@@ -185,11 +199,13 @@ class Match(Serializable):
         kick_penalty : method to call if this check returns True
         next : method to call if this check returns False
         """
-        curr_action = self.get_current_action()
+        curr_action = self.get_action_from_game_clock()
 
         return curr_action is not None and curr_action.is_penalty_pending()
 
-    async def next(self) -> Match:
+    async def generate_action_and_advance(
+        self, action_loader: AsyncActionLoader
+    ) -> Match:
         if self.is_penalty_pending():
             raise RuntimeError("Penalty pending, could not advance to next action")
 
@@ -201,7 +217,41 @@ class Match(Serializable):
         elif next_state.game_clock.is_phase_time_expired(stoppage_time):
             return next_state.handle_phase_transition()
         else:
-            return await next_state.perform_action()
+            new_action = await next_state.generate_action(action_loader)
+
+            if new_action:
+                new_stoppage_time = self.update_stoppage_time(new_action)
+
+                return attr.evolve(
+                    next_state.perform_action(new_action),
+                    stoppage_times=new_stoppage_time,
+                )
+            else:
+                return next_state
+
+    async def advance_from_action_list(
+        self, actions: tuple[MatchAction, ...], stoppage_time: dict[MatchPhase, float]
+    ):
+        if self.is_penalty_pending():
+            raise RuntimeError("Penalty pending, could not advance to next action")
+
+        next_state = attr.evolve(
+            self,
+            game_clock=self.game_clock.add_minutes(1),
+            actions=actions,
+            stoppage_times=stoppage_time,
+        )
+        curr_stoppage_time = next_state.get_stoppage_time_minutes()
+        if next_state.game_clock.phase == MatchPhase.PENALTIES:
+            return await next_state.handle_penalties()
+        elif next_state.game_clock.is_phase_time_expired(curr_stoppage_time):
+            return next_state.handle_phase_transition()
+        else:
+            curr_action = next_state.get_action_from_game_clock()
+            if curr_action is not None:
+                return next_state.perform_action(curr_action)
+            else:
+                return next_state
 
     async def handle_penalties(self):
         score_1, score_2 = self.get_score()
@@ -235,29 +285,28 @@ class Match(Serializable):
             )
             return attr.evolve(self, actions=self.actions + (new_action,))
 
-    async def prefetch_blueprints(self, n=1):
-        for i in range(n):
-            choices: list[ActionType] = ["goal", "no_goal", "penalty", "own_goal"]
+    def generate_action_request(self):
+        choices: list[ActionType] = ["goal", "no_goal", "penalty", "own_goal"]
 
-            probabilities = [
-                self.config.default_action_goal_probability,
-                self.config.default_action_no_goal_probability,
-                self.config.default_action_penalty_probability,
-                self.config.default_action_own_goal_probability,
-            ]
+        probabilities = [
+            self.config.default_action_goal_probability,
+            self.config.default_action_no_goal_probability,
+            self.config.default_action_penalty_probability,
+            self.config.default_action_own_goal_probability,
+        ]
 
-            (action_type,) = random.choices(choices, probabilities, k=1)
+        (action_type,) = random.choices(choices, probabilities, k=1)
 
-            var = np.random.random() < self.config.default_action_var_probability
+        var = np.random.random() < self.config.default_action_var_probability
 
-            # Send the request to the provider that will fetch the blueprints used in get
-            await self.action_provider.request(ActionRequest(action_type, var))
+        # Send the request to the provider that will fetch the blueprints used in get
+        return ActionRequest(action_type, var)
 
     def kick_penalty(self, penalty: Penalty):
         if not self.is_penalty_pending():
             raise RuntimeError("There is no penalty to kick")
 
-        curr_action = self.get_current_action()
+        curr_action = self.get_action_from_game_clock()
 
         assert curr_action is not None
         new_action = curr_action.kick_penalty(penalty)
@@ -265,7 +314,7 @@ class Match(Serializable):
         action_list[action_list.index(curr_action)] = new_action
         return attr.evolve(self, actions=tuple(action_list))
 
-    def is_match_finished(self):
+    def is_match_finished(self) -> bool:
         return self.finished
 
     def is_current_phase_finished(self) -> bool:
@@ -341,20 +390,20 @@ class Match(Serializable):
         else:
             return random.choice([0, 1])
 
-    def update_added_time(self, blueprint):
-        if self.game_clock.minute <= self.game_clock.phase.duration_minutes:
+    def update_stoppage_time(self, action: MatchAction):
+        if action.time.minute <= action.time.phase.duration_minutes:
             stoppage_time_change = 0.0
-            if blueprint.action_type == "goal":
+            if action.type == "goal":
                 stoppage_time_change += np.random.uniform(
                     self.config.goal_added_time_min,
                     self.config.goal_added_time_max,
                 )
-            elif blueprint.action_type == "penalty":
+            elif action.type == "penalty":
                 stoppage_time_change += np.random.uniform(
                     self.config.penalty_added_time_min,
                     self.config.penalty_added_time_max,
                 )
-            if blueprint.use_var:
+            if action.type:
                 stoppage_time_change += np.random.uniform(
                     self.config.var_added_time_min,
                     self.config.var_added_time_max,
@@ -369,17 +418,15 @@ class Match(Serializable):
         else:
             return self.stoppage_times
 
-    async def perform_action(self):
+    async def generate_action(self, action_loader: AsyncActionLoader):
         action_probability = self.determine_action_probability()
 
         if self.should_perform_action(action_probability):
-            await self.prefetch_blueprints()
-
             atk_team = self.determine_attacking_team()
 
-            blueprint = await self.action_provider.get()
+            request = self.generate_action_request()
+            blueprint = await action_loader.generate(request)
 
-            new_stoppage_times = self.update_added_time(blueprint)
             new_action = MatchAction.create_from_blueprint(
                 blueprint,
                 self.game_clock,
@@ -388,13 +435,17 @@ class Match(Serializable):
                 self.referee,
                 self.stadium,
             )
-            return attr.evolve(
-                self,
-                stoppage_times=new_stoppage_times,
-                actions=self.actions + (new_action,),
-            )
+
+            return new_action
+
         else:
-            return self
+            return None
+
+    def perform_action(self, new_action: MatchAction):
+        return attr.evolve(
+            self,
+            actions=self.actions + (new_action,),
+        )
 
     def is_tie(self):
         score_1, score_2 = self.get_score()

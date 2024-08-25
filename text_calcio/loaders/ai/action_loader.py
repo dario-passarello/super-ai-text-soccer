@@ -2,6 +2,7 @@ from openai import AsyncOpenAI
 from text_calcio.loaders.action import ActionBlueprint, ActionRequest, AsyncActionLoader
 from text_calcio.loaders.ai.api_models import ActionResponse
 from text_calcio.loaders.ai.prompt import build_prompt
+from aioconsole import aprint
 
 
 class AsyncAIActionLoader(AsyncActionLoader):
@@ -37,4 +38,5 @@ class AsyncAIActionLoader(AsyncActionLoader):
             action_response.scorer_player,
             action_response.assist_player,
         )
+        await aprint("Schema loaded")
         return action_schema

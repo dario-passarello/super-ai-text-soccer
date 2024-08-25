@@ -8,6 +8,7 @@ from aioconsole import ainput, aprint
 import yaml
 
 from text_calcio.cli.display import clean_screen, CLIDisplay
+from text_calcio.loaders.action import AsyncActionLoader
 from text_calcio.state.match import Match, Penalty
 
 
@@ -18,11 +19,17 @@ class CLIController:
         penalty_mode: Literal["always_auto", "always_player"] = "always_player"
 
     def __init__(
-        self, match: Match, config: Optional[CLIController.Config] = None
+        self,
+        match: Match,
+        action_loader: AsyncActionLoader,
+        config: Optional[CLIController.Config] = None,
     ) -> None:
         self.config = config or CLIController.Config()
         self.match = match
+        self.prefetched_match = match
+        self.action_loader = action_loader
         self.display = CLIDisplay(match)
+        self.condition_variable = asyncio.Condition()
 
     async def __call__(self, require_input=False) -> Optional[str]:
         if require_input:
@@ -31,7 +38,7 @@ class CLIController:
             await self.prompt_continue()
             return None
 
-    def update_match(self, match):
+    def update_match(self, match: Match):
         self.match = match
         self.display.match = match
 
@@ -45,13 +52,29 @@ class CLIController:
         else:
             await ainput("[↵]")
 
-    async def run(self):
-        await self.match.prefetch_blueprints(3)
+    async def prefetch_loop(self):
+        while not self.match.is_match_finished():
+            async with self.condition_variable:
+                if self.prefetched_match.is_penalty_pending():
+                    await aprint(
+                        f"Penalty pending at {self.prefetched_match.game_clock}"
+                    )
+                    await self.condition_variable.wait_for(
+                        lambda: not self.prefetched_match.is_penalty_pending()
+                    )
+                self.condition_variable.notify_all()
+
+            new_data = await self.prefetched_match.generate_action_and_advance(
+                self.action_loader
+            )
+            self.prefetched_match = new_data
+
+    async def controller_loop(self):
         while not self.match.is_match_finished():
             with open("match.yaml", "w") as f:
                 yaml.dump(self.match.serialize(), f)
 
-            curr_action = self.match.get_current_action()
+            curr_action = self.match.get_action_from_game_clock()
 
             if curr_action is None:
                 await aprint(self.display.render_header(), end="\n\n\n")
@@ -71,7 +94,9 @@ class CLIController:
                     )
 
                     self.update_match(self.match.kick_penalty(penalty))
-
+                    async with self.condition_variable:
+                        self.prefetched_match.kick_penalty(penalty)
+                        self.condition_variable.notify_all()
                 await clean_screen()
 
                 if curr_action.is_goal():
@@ -81,7 +106,9 @@ class CLIController:
                 await clean_screen()
 
                 await aprint(
-                    self.display.render_evaluations(self.match.get_current_action())
+                    self.display.render_evaluations(
+                        self.match.get_action_from_game_clock()
+                    )
                 )
                 await self.prompt_continue()
 
@@ -91,8 +118,26 @@ class CLIController:
 
             await aprint("Loading ...")
 
-            self.update_match(await self.match.next())
+            await aprint(
+                f"Game: {self.match.game_clock} Prefetch: {self.prefetched_match.game_clock}"
+            )
+            async with self.condition_variable:
+                if self.match.game_clock >= self.prefetched_match.game_clock:
+                    await aprint("Waiting")
+                    await self.condition_variable.wait_for(
+                        lambda: self.match.game_clock < self.prefetched_match.game_clock
+                    )
+                await aprint(len(self.prefetched_match.actions))
+                self.condition_variable.notify_all()
+                new_match = await self.match.advance_from_action_list(
+                    tuple(self.prefetched_match.actions),
+                    self.prefetched_match.stoppage_times,
+                )
+                self.update_match(new_match)
 
             await clean_screen()
-        with open("match.yaml", "w") as f:
+        with open("prefetch_match.yaml", "w") as f:
             yaml.dump(self.match.serialize(), f)
+
+    async def run(self):
+        await asyncio.gather(self.controller_loop(), self.prefetch_loop())

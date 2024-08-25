@@ -197,7 +197,7 @@ class CLIDisplay:
         return display
 
     async def display_action_sequence(self) -> AsyncGenerator[None, None]:
-        last_action = self.match.get_current_action()
+        last_action = self.match.get_action_from_game_clock()
 
         if last_action is None:
             yield
@@ -240,7 +240,7 @@ class CLIDisplay:
     ) -> PenaltyInteractionResult:
         random_option = "0 - " + _("random")
 
-        last_action = self.match.get_current_action()
+        last_action = self.match.get_action_from_game_clock()
         if last_action is None:
             raise RuntimeError("No penalty found")
         assigments = last_action.get_all_assigments()
@@ -459,7 +459,8 @@ class CLIDisplay:
 
 
 async def clean_screen():
-    await aprint(CLEAR_CHAR)
+    # await aprint(CLEAR_CHAR)
+    pass
 
 
 def format_phrase(
