@@ -23,19 +23,23 @@ class MatchPhase(Enum):
     SECOND_EXTRA_TIME = "SECOND_EXTRA_TIME"
     PENALTIES = "PENALTIES"
 
-    def __init__(self, id) -> None:
-        self.id = id
+    def __init__(self, id: str) -> None:
+        self.string_id = id
+        self.duration_minutes = self._get_duration(id)
+
+    def _get_duration(self, id: str) -> int:
         match id:
-            case "FIRST_HALF":
-                self.duration_minutes = 45
-            case "SECOND_HALF":
-                self.duration_minutes = 45
-            case "FIRST_EXTRA_TIME":
-                self.duration_minutes = 15
-            case "SECOND_EXTRA_TIME":
-                self.duration_minutes = 15
+            case "FIRST_HALF" | "SECOND_HALF":
+                return 45
+            case "FIRST_EXTRA_TIME" | "SECOND_EXTRA_TIME":
+                return 15
             case "PENALTIES":
-                self.duration_minutes = 0
+                return 0
+        raise ValueError(f"Invalid MatchPhase id: {id}")
+
+    @property
+    def id(self) -> int:
+        return list(self.__class__).index(self)
 
     def __contains__(self, value: object) -> bool:
         if hasattr(value, "phase"):
@@ -53,7 +57,7 @@ class MatchPhase(Enum):
         return self.id < other.id
 
     def from_name(self, name: str):
-        MatchPhase[self.name]
+        return MatchPhase[self.name]
 
     @classmethod
     def get_phase_by_id(cls, id: int):
@@ -67,8 +71,6 @@ class MatchPhase(Enum):
     def next_phase(self):
         if self == MatchPhase.PENALTIES:
             raise ValueError("No more phases after PENALTIES")
-
-        print(self.id)
 
         return MatchPhase.get_phase_by_id(self.id + 1)
 

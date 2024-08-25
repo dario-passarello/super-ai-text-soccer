@@ -85,7 +85,7 @@ class Penalty:
 
     @staticmethod
     def create_auto_penalty(player_kicking: str, goalkeeper: str):
-        Penalty.create_player_kicked_penalty(
+        return Penalty.create_player_kicked_penalty(
             player_kicking,
             goalkeeper,
             random.choice(ALL_PENALTY_DIRECTIONS),

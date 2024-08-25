@@ -1,0 +1,535 @@
+Match finished
+actions:
+- assist_player: Stef
+  goal_player: Paso
+  penalty: null
+  player_assignments:
+    atk_1: Paso
+    atk_2: Stef
+    atk_3: Pit
+    atk_4: Giammy
+    atk_goalkeeper: Gio
+    def_1: Dario
+    def_2: Dav
+    def_3: Dani
+    def_4: Max
+    def_goalkeeper: Kien
+  support_assignments:
+    atk_team_name: PASTA
+    def_team_name: FORGIA
+    referee: Yassim Parziale
+    stadium: Server di Forgiacraft IV
+  team_atk_id: 1
+  time:
+    minute: 17
+    phase: &id001 !!python/object/apply:text_calcio.state.match_phase.MatchPhase
+    - FIRST_HALF
+  type: no_goal
+  var_review: false
+- assist_player: Giammy
+  goal_player: Paso
+  penalty: null
+  player_assignments:
+    atk_1: Paso
+    atk_2: Giammy
+    atk_3: Pit
+    atk_4: Stef
+    atk_goalkeeper: Gio
+    def_1: Dav
+    def_2: Dani
+    def_3: Max
+    def_4: Dario
+    def_goalkeeper: Kien
+  support_assignments:
+    atk_team_name: PASTA
+    def_team_name: FORGIA
+    referee: Yassim Parziale
+    stadium: Server di Forgiacraft IV
+  team_atk_id: 1
+  time:
+    minute: 21
+    phase: *id001
+  type: goal
+  var_review: false
+- assist_player: Max
+  goal_player: Dario
+  penalty: null
+  player_assignments:
+    atk_1: Dario
+    atk_2: Max
+    atk_3: Dani
+    atk_4: Dav
+    atk_goalkeeper: Kien
+    def_1: Paso
+    def_2: Pit
+    def_3: Giammy
+    def_4: Stef
+    def_goalkeeper: Gio
+  support_assignments:
+    atk_team_name: FORGIA
+    def_team_name: PASTA
+    referee: Yassim Parziale
+    stadium: Server di Forgiacraft IV
+  team_atk_id: 0
+  time:
+    minute: 24
+    phase: *id001
+  type: no_goal
+  var_review: false
+- assist_player: Stef
+  goal_player: Pit
+  penalty: null
+  player_assignments:
+    atk_1: Pit
+    atk_2: Stef
+    atk_3: Paso
+    atk_4: Giammy
+    atk_goalkeeper: Gio
+    def_1: Max
+    def_2: Dario
+    def_3: Dav
+    def_4: Dani
+    def_goalkeeper: Kien
+  support_assignments:
+    atk_team_name: PASTA
+    def_team_name: FORGIA
+    referee: Yassim Parziale
+    stadium: Server di Forgiacraft IV
+  team_atk_id: 1
+  time:
+    minute: 26
+    phase: *id001
+  type: no_goal
+  var_review: false
+- assist_player: Stef
+  goal_player: Giammy
+  penalty: null
+  player_assignments:
+    atk_1: Giammy
+    atk_2: Stef
+    atk_3: Pit
+    atk_4: Paso
+    atk_goalkeeper: Gio
+    def_1: Dani
+    def_2: Dario
+    def_3: Dav
+    def_4: Max
+    def_goalkeeper: Kien
+  support_assignments:
+    atk_team_name: PASTA
+    def_team_name: FORGIA
+    referee: Yassim Parziale
+    stadium: Server di Forgiacraft IV
+  team_atk_id: 1
+  time:
+    minute: 35
+    phase: *id001
+  type: no_goal
+  var_review: false
+- assist_player: Pit
+  goal_player: Stef
+  penalty: null
+  player_assignments:
+    atk_1: Stef
+    atk_2: Pit
+    atk_3: Paso
+    atk_4: Giammy
+    atk_goalkeeper: Gio
+    def_1: Dani
+    def_2: Dario
+    def_3: Dav
+    def_4: Max
+    def_goalkeeper: Kien
+  support_assignments:
+    atk_team_name: PASTA
+    def_team_name: FORGIA
+    referee: Yassim Parziale
+    stadium: Server di Forgiacraft IV
+  team_atk_id: 1
+  time:
+    minute: 41
+    phase: *id001
+  type: no_goal
+  var_review: false
+- assist_player: Stef
+  goal_player: Giammy
+  penalty: null
+  player_assignments:
+    atk_1: Giammy
+    atk_2: Stef
+    atk_3: Paso
+    atk_4: Pit
+    atk_goalkeeper: Gio
+    def_1: Dario
+    def_2: Dani
+    def_3: Max
+    def_4: Dav
+    def_goalkeeper: Kien
+  support_assignments:
+    atk_team_name: PASTA
+    def_team_name: FORGIA
+    referee: Yassim Parziale
+    stadium: Server di Forgiacraft IV
+  team_atk_id: 1
+  time:
+    minute: 45
+    phase: *id001
+  type: goal
+  var_review: false
+- assist_player: Dav
+  goal_player: Dario
+  penalty: null
+  player_assignments:
+    atk_1: Dario
+    atk_2: Dav
+    atk_3: Dani
+    atk_4: Max
+    atk_goalkeeper: Kien
+    def_1: Pit
+    def_2: Paso
+    def_3: Stef
+    def_4: Giammy
+    def_goalkeeper: Gio
+  support_assignments:
+    atk_team_name: FORGIA
+    def_team_name: PASTA
+    referee: Yassim Parziale
+    stadium: Server di Forgiacraft IV
+  team_atk_id: 0
+  time:
+    minute: 46
+    phase: *id001
+  type: no_goal
+  var_review: false
+- assist_player: Max
+  goal_player: Dav
+  penalty: null
+  player_assignments:
+    atk_1: Dav
+    atk_2: Max
+    atk_3: Dani
+    atk_4: Dario
+    atk_goalkeeper: Kien
+    def_1: Paso
+    def_2: Giammy
+    def_3: Stef
+    def_4: Pit
+    def_goalkeeper: Gio
+  support_assignments:
+    atk_team_name: FORGIA
+    def_team_name: PASTA
+    referee: Yassim Parziale
+    stadium: Server di Forgiacraft IV
+  team_atk_id: 0
+  time:
+    minute: 47
+    phase: *id001
+  type: no_goal
+  var_review: false
+- assist_player: Giammy
+  goal_player: Paso
+  penalty: null
+  player_assignments:
+    atk_1: Paso
+    atk_2: Giammy
+    atk_3: Stef
+    atk_4: Pit
+    atk_goalkeeper: Gio
+    def_1: Dani
+    def_2: Max
+    def_3: Dav
+    def_4: Dario
+    def_goalkeeper: Kien
+  support_assignments:
+    atk_team_name: PASTA
+    def_team_name: FORGIA
+    referee: Yassim Parziale
+    stadium: Server di Forgiacraft IV
+  team_atk_id: 1
+  time:
+    minute: 10
+    phase: &id002 !!python/object/apply:text_calcio.state.match_phase.MatchPhase
+    - SECOND_HALF
+  type: no_goal
+  var_review: false
+- assist_player: Dario
+  goal_player: Dani
+  penalty: null
+  player_assignments:
+    atk_1: Dani
+    atk_2: Dario
+    atk_3: Dav
+    atk_4: Max
+    atk_goalkeeper: Kien
+    def_1: Paso
+    def_2: Giammy
+    def_3: Stef
+    def_4: Pit
+    def_goalkeeper: Gio
+  support_assignments:
+    atk_team_name: FORGIA
+    def_team_name: PASTA
+    referee: Yassim Parziale
+    stadium: Server di Forgiacraft IV
+  team_atk_id: 0
+  time:
+    minute: 15
+    phase: *id002
+  type: goal
+  var_review: false
+- assist_player: Paso
+  goal_player: Pit
+  penalty: null
+  player_assignments:
+    atk_1: Pit
+    atk_2: Paso
+    atk_3: Stef
+    atk_4: Giammy
+    atk_goalkeeper: Gio
+    def_1: Dani
+    def_2: Dav
+    def_3: Dario
+    def_4: Max
+    def_goalkeeper: Kien
+  support_assignments:
+    atk_team_name: PASTA
+    def_team_name: FORGIA
+    referee: Yassim Parziale
+    stadium: Server di Forgiacraft IV
+  team_atk_id: 1
+  time:
+    minute: 24
+    phase: *id002
+  type: no_goal
+  var_review: false
+- assist_player: Giammy
+  goal_player: Pit
+  penalty: null
+  player_assignments:
+    atk_1: Pit
+    atk_2: Giammy
+    atk_3: Paso
+    atk_4: Stef
+    atk_goalkeeper: Gio
+    def_1: Dani
+    def_2: Dav
+    def_3: Max
+    def_4: Dario
+    def_goalkeeper: Kien
+  support_assignments:
+    atk_team_name: PASTA
+    def_team_name: FORGIA
+    referee: Yassim Parziale
+    stadium: Server di Forgiacraft IV
+  team_atk_id: 1
+  time:
+    minute: 27
+    phase: *id002
+  type: goal
+  var_review: false
+- assist_player: Dav
+  goal_player: Dario
+  penalty: null
+  player_assignments:
+    atk_1: Dario
+    atk_2: Dav
+    atk_3: Dani
+    atk_4: Max
+    atk_goalkeeper: Kien
+    def_1: Stef
+    def_2: Paso
+    def_3: Giammy
+    def_4: Pit
+    def_goalkeeper: Gio
+  support_assignments:
+    atk_team_name: FORGIA
+    def_team_name: PASTA
+    referee: Yassim Parziale
+    stadium: Server di Forgiacraft IV
+  team_atk_id: 0
+  time:
+    minute: 33
+    phase: *id002
+  type: no_goal
+  var_review: false
+- assist_player: Max
+  goal_player: Dario
+  penalty: null
+  player_assignments:
+    atk_1: Dario
+    atk_2: Max
+    atk_3: Dani
+    atk_4: Dav
+    atk_goalkeeper: Kien
+    def_1: Stef
+    def_2: Paso
+    def_3: Giammy
+    def_4: Pit
+    def_goalkeeper: Gio
+  support_assignments:
+    atk_team_name: FORGIA
+    def_team_name: PASTA
+    referee: Yassim Parziale
+    stadium: Server di Forgiacraft IV
+  team_atk_id: 0
+  time:
+    minute: 34
+    phase: *id002
+  type: no_goal
+  var_review: false
+- assist_player: Dario
+  goal_player: Max
+  penalty: null
+  player_assignments:
+    atk_1: Max
+    atk_2: Dario
+    atk_3: Dav
+    atk_4: Dani
+    atk_goalkeeper: Kien
+    def_1: Pit
+    def_2: Giammy
+    def_3: Paso
+    def_4: Stef
+    def_goalkeeper: Gio
+  support_assignments:
+    atk_team_name: FORGIA
+    def_team_name: PASTA
+    referee: Yassim Parziale
+    stadium: Server di Forgiacraft IV
+  team_atk_id: 0
+  time:
+    minute: 45
+    phase: *id002
+  type: no_goal
+  var_review: false
+- assist_player: Dani
+  goal_player: Dav
+  penalty: null
+  player_assignments:
+    atk_1: Dav
+    atk_2: Dani
+    atk_3: Dario
+    atk_4: Max
+    atk_goalkeeper: Kien
+    def_1: Giammy
+    def_2: Pit
+    def_3: Paso
+    def_4: Stef
+    def_goalkeeper: Gio
+  support_assignments:
+    atk_team_name: FORGIA
+    def_team_name: PASTA
+    referee: Yassim Parziale
+    stadium: Server di Forgiacraft IV
+  team_atk_id: 0
+  time:
+    minute: 46
+    phase: *id002
+  type: no_goal
+  var_review: false
+- assist_player: Dani
+  goal_player: Dario
+  penalty: null
+  player_assignments:
+    atk_1: Dario
+    atk_2: Dani
+    atk_3: Max
+    atk_4: Dav
+    atk_goalkeeper: Kien
+    def_1: Paso
+    def_2: Stef
+    def_3: Pit
+    def_4: Giammy
+    def_goalkeeper: Gio
+  support_assignments:
+    atk_team_name: FORGIA
+    def_team_name: PASTA
+    referee: Yassim Parziale
+    stadium: Server di Forgiacraft IV
+  team_atk_id: 0
+  time:
+    minute: 47
+    phase: *id002
+  type: no_goal
+  var_review: false
+away_team:
+  color: red
+  familiar_name: PASTA
+  full_name: F.C. PASTA CALCISTICA
+  players:
+  - Gio
+  - Giammy
+  - Pit
+  - Stef
+  - Paso
+  short_name: PAS
+config:
+  added_time_action_probability: 0.45
+  default_action_goal_probability: 0.18
+  default_action_no_goal_probability: 0.72
+  default_action_own_goal_probability: 0.02
+  default_action_penalty_probability: 0.08
+  default_action_var_probability: 0.1
+  extra_time_action_probability: 0.3
+  goal_added_time_max: 1.5
+  goal_added_time_min: 0.5
+  penalties_shoot_count: 5
+  penalty_added_time_max: 1.75
+  penalty_added_time_min: 0.75
+  standard_action_probability: 0.15
+  start_from_phase: *id001
+  tie_breaker: on_tie_extra_time_and_penalties
+  var_added_time_max: 2.0
+  var_added_time_min: 1.0
+finished: true
+game_clock:
+  minute: 48
+  phase: *id002
+home_team:
+  color: blue
+  familiar_name: FORGIA
+  full_name: A.C. FORGIA
+  players:
+  - Kien
+  - Dani
+  - Dario
+  - Dav
+  - Max
+  short_name: FOR
+referee: Yassim Parziale
+stadium:
+  capacity: 20
+  name: Server di Forgiacraft IV
+  prefix: nel
+stoppage_times:
+  *id001: 1.9808021967172045
+  *id002: 2.453639182721208
+  ? !!python/object/apply:text_calcio.state.match_phase.MatchPhase
+  - FIRST_EXTRA_TIME
+  : 0.0
+  ? !!python/object/apply:text_calcio.state.match_phase.MatchPhase
+  - SECOND_EXTRA_TIME
+  : 0.0
+  ? !!python/object/apply:text_calcio.state.match_phase.MatchPhase
+  - PENALTIES
+  : 0.0
+
+FOR 1 - 3 PAS
+MatchAction(team_atk_id=1, time=MatchTime(phase=<MatchPhase.FIRST_HALF: 'FIRST_HALF'>, minute=17), type='no_goal', goal_player='Paso', assist_player='Stef', player_assignments={'atk_1': 'Paso', 'atk_2': 'Stef', 'atk_3': 'Pit', 'atk_4': 'Giammy', 'atk_goalkeeper': 'Gio', 'def_1': 'Dario', 'def_2': 'Dav', 'def_3': 'Dani', 'def_4': 'Max', 'def_goalkeeper': 'Kien'}, support_assignments={'referee': 'Yassim Parziale', 'stadium': 'Server di Forgiacraft IV', 'atk_team_name': 'PASTA', 'def_team_name': 'FORGIA'}, penalty=None, var_review=False)
+MatchAction(team_atk_id=1, time=MatchTime(phase=<MatchPhase.FIRST_HALF: 'FIRST_HALF'>, minute=21), type='goal', goal_player='Paso', assist_player='Giammy', player_assignments={'atk_1': 'Paso', 'atk_2': 'Giammy', 'atk_3': 'Pit', 'atk_4': 'Stef', 'atk_goalkeeper': 'Gio', 'def_1': 'Dav', 'def_2': 'Dani', 'def_3': 'Max', 'def_4': 'Dario', 'def_goalkeeper': 'Kien'}, support_assignments={'referee': 'Yassim Parziale', 'stadium': 'Server di Forgiacraft IV', 'atk_team_name': 'PASTA', 'def_team_name': 'FORGIA'}, penalty=None, var_review=False)
+MatchAction(team_atk_id=0, time=MatchTime(phase=<MatchPhase.FIRST_HALF: 'FIRST_HALF'>, minute=24), type='no_goal', goal_player='Dario', assist_player='Max', player_assignments={'atk_1': 'Dario', 'atk_2': 'Max', 'atk_3': 'Dani', 'atk_4': 'Dav', 'atk_goalkeeper': 'Kien', 'def_1': 'Paso', 'def_2': 'Pit', 'def_3': 'Giammy', 'def_4': 'Stef', 'def_goalkeeper': 'Gio'}, support_assignments={'referee': 'Yassim Parziale', 'stadium': 'Server di Forgiacraft IV', 'atk_team_name': 'FORGIA', 'def_team_name': 'PASTA'}, penalty=None, var_review=False)
+MatchAction(team_atk_id=1, time=MatchTime(phase=<MatchPhase.FIRST_HALF: 'FIRST_HALF'>, minute=26), type='no_goal', goal_player='Pit', assist_player='Stef', player_assignments={'atk_1': 'Pit', 'atk_2': 'Stef', 'atk_3': 'Paso', 'atk_4': 'Giammy', 'atk_goalkeeper': 'Gio', 'def_1': 'Max', 'def_2': 'Dario', 'def_3': 'Dav', 'def_4': 'Dani', 'def_goalkeeper': 'Kien'}, support_assignments={'referee': 'Yassim Parziale', 'stadium': 'Server di Forgiacraft IV', 'atk_team_name': 'PASTA', 'def_team_name': 'FORGIA'}, penalty=None, var_review=False)
+MatchAction(team_atk_id=1, time=MatchTime(phase=<MatchPhase.FIRST_HALF: 'FIRST_HALF'>, minute=35), type='no_goal', goal_player='Giammy', assist_player='Stef', player_assignments={'atk_1': 'Giammy', 'atk_2': 'Stef', 'atk_3': 'Pit', 'atk_4': 'Paso', 'atk_goalkeeper': 'Gio', 'def_1': 'Dani', 'def_2': 'Dario', 'def_3': 'Dav', 'def_4': 'Max', 'def_goalkeeper': 'Kien'}, support_assignments={'referee': 'Yassim Parziale', 'stadium': 'Server di Forgiacraft IV', 'atk_team_name': 'PASTA', 'def_team_name': 'FORGIA'}, penalty=None, var_review=False)
+MatchAction(team_atk_id=1, time=MatchTime(phase=<MatchPhase.FIRST_HALF: 'FIRST_HALF'>, minute=41), type='no_goal', goal_player='Stef', assist_player='Pit', player_assignments={'atk_1': 'Stef', 'atk_2': 'Pit', 'atk_3': 'Paso', 'atk_4': 'Giammy', 'atk_goalkeeper': 'Gio', 'def_1': 'Dani', 'def_2': 'Dario', 'def_3': 'Dav', 'def_4': 'Max', 'def_goalkeeper': 'Kien'}, support_assignments={'referee': 'Yassim Parziale', 'stadium': 'Server di Forgiacraft IV', 'atk_team_name': 'PASTA', 'def_team_name': 'FORGIA'}, penalty=None, var_review=False)
+MatchAction(team_atk_id=1, time=MatchTime(phase=<MatchPhase.FIRST_HALF: 'FIRST_HALF'>, minute=45), type='goal', goal_player='Giammy', assist_player='Stef', player_assignments={'atk_1': 'Giammy', 'atk_2': 'Stef', 'atk_3': 'Paso', 'atk_4': 'Pit', 'atk_goalkeeper': 'Gio', 'def_1': 'Dario', 'def_2': 'Dani', 'def_3': 'Max', 'def_4': 'Dav', 'def_goalkeeper': 'Kien'}, support_assignments={'referee': 'Yassim Parziale', 'stadium': 'Server di Forgiacraft IV', 'atk_team_name': 'PASTA', 'def_team_name': 'FORGIA'}, penalty=None, var_review=False)
+MatchAction(team_atk_id=0, time=MatchTime(phase=<MatchPhase.FIRST_HALF: 'FIRST_HALF'>, minute=46), type='no_goal', goal_player='Dario', assist_player='Dav', player_assignments={'atk_1': 'Dario', 'atk_2': 'Dav', 'atk_3': 'Dani', 'atk_4': 'Max', 'atk_goalkeeper': 'Kien', 'def_1': 'Pit', 'def_2': 'Paso', 'def_3': 'Stef', 'def_4': 'Giammy', 'def_goalkeeper': 'Gio'}, support_assignments={'referee': 'Yassim Parziale', 'stadium': 'Server di Forgiacraft IV', 'atk_team_name': 'FORGIA', 'def_team_name': 'PASTA'}, penalty=None, var_review=False)
+MatchAction(team_atk_id=0, time=MatchTime(phase=<MatchPhase.FIRST_HALF: 'FIRST_HALF'>, minute=47), type='no_goal', goal_player='Dav', assist_player='Max', player_assignments={'atk_1': 'Dav', 'atk_2': 'Max', 'atk_3': 'Dani', 'atk_4': 'Dario', 'atk_goalkeeper': 'Kien', 'def_1': 'Paso', 'def_2': 'Giammy', 'def_3': 'Stef', 'def_4': 'Pit', 'def_goalkeeper': 'Gio'}, support_assignments={'referee': 'Yassim Parziale', 'stadium': 'Server di Forgiacraft IV', 'atk_team_name': 'FORGIA', 'def_team_name': 'PASTA'}, penalty=None, var_review=False)
+MatchAction(team_atk_id=1, time=MatchTime(phase=<MatchPhase.SECOND_HALF: 'SECOND_HALF'>, minute=10), type='no_goal', goal_player='Paso', assist_player='Giammy', player_assignments={'atk_1': 'Paso', 'atk_2': 'Giammy', 'atk_3': 'Stef', 'atk_4': 'Pit', 'atk_goalkeeper': 'Gio', 'def_1': 'Dani', 'def_2': 'Max', 'def_3': 'Dav', 'def_4': 'Dario', 'def_goalkeeper': 'Kien'}, support_assignments={'referee': 'Yassim Parziale', 'stadium': 'Server di Forgiacraft IV', 'atk_team_name': 'PASTA', 'def_team_name': 'FORGIA'}, penalty=None, var_review=False)
+MatchAction(team_atk_id=0, time=MatchTime(phase=<MatchPhase.SECOND_HALF: 'SECOND_HALF'>, minute=15), type='goal', goal_player='Dani', assist_player='Dario', player_assignments={'atk_1': 'Dani', 'atk_2': 'Dario', 'atk_3': 'Dav', 'atk_4': 'Max', 'atk_goalkeeper': 'Kien', 'def_1': 'Paso', 'def_2': 'Giammy', 'def_3': 'Stef', 'def_4': 'Pit', 'def_goalkeeper': 'Gio'}, support_assignments={'referee': 'Yassim Parziale', 'stadium': 'Server di Forgiacraft IV', 'atk_team_name': 'FORGIA', 'def_team_name': 'PASTA'}, penalty=None, var_review=False)
+MatchAction(team_atk_id=1, time=MatchTime(phase=<MatchPhase.SECOND_HALF: 'SECOND_HALF'>, minute=24), type='no_goal', goal_player='Pit', assist_player='Paso', player_assignments={'atk_1': 'Pit', 'atk_2': 'Paso', 'atk_3': 'Stef', 'atk_4': 'Giammy', 'atk_goalkeeper': 'Gio', 'def_1': 'Dani', 'def_2': 'Dav', 'def_3': 'Dario', 'def_4': 'Max', 'def_goalkeeper': 'Kien'}, support_assignments={'referee': 'Yassim Parziale', 'stadium': 'Server di Forgiacraft IV', 'atk_team_name': 'PASTA', 'def_team_name': 'FORGIA'}, penalty=None, var_review=False)
+MatchAction(team_atk_id=1, time=MatchTime(phase=<MatchPhase.SECOND_HALF: 'SECOND_HALF'>, minute=27), type='goal', goal_player='Pit', assist_player='Giammy', player_assignments={'atk_1': 'Pit', 'atk_2': 'Giammy', 'atk_3': 'Paso', 'atk_4': 'Stef', 'atk_goalkeeper': 'Gio', 'def_1': 'Dani', 'def_2': 'Dav', 'def_3': 'Max', 'def_4': 'Dario', 'def_goalkeeper': 'Kien'}, support_assignments={'referee': 'Yassim Parziale', 'stadium': 'Server di Forgiacraft IV', 'atk_team_name': 'PASTA', 'def_team_name': 'FORGIA'}, penalty=None, var_review=False)
+MatchAction(team_atk_id=0, time=MatchTime(phase=<MatchPhase.SECOND_HALF: 'SECOND_HALF'>, minute=33), type='no_goal', goal_player='Dario', assist_player='Dav', player_assignments={'atk_1': 'Dario', 'atk_2': 'Dav', 'atk_3': 'Dani', 'atk_4': 'Max', 'atk_goalkeeper': 'Kien', 'def_1': 'Stef', 'def_2': 'Paso', 'def_3': 'Giammy', 'def_4': 'Pit', 'def_goalkeeper': 'Gio'}, support_assignments={'referee': 'Yassim Parziale', 'stadium': 'Server di Forgiacraft IV', 'atk_team_name': 'FORGIA', 'def_team_name': 'PASTA'}, penalty=None, var_review=False)
+MatchAction(team_atk_id=0, time=MatchTime(phase=<MatchPhase.SECOND_HALF: 'SECOND_HALF'>, minute=34), type='no_goal', goal_player='Dario', assist_player='Max', player_assignments={'atk_1': 'Dario', 'atk_2': 'Max', 'atk_3': 'Dani', 'atk_4': 'Dav', 'atk_goalkeeper': 'Kien', 'def_1': 'Stef', 'def_2': 'Paso', 'def_3': 'Giammy', 'def_4': 'Pit', 'def_goalkeeper': 'Gio'}, support_assignments={'referee': 'Yassim Parziale', 'stadium': 'Server di Forgiacraft IV', 'atk_team_name': 'FORGIA', 'def_team_name': 'PASTA'}, penalty=None, var_review=False)
+MatchAction(team_atk_id=0, time=MatchTime(phase=<MatchPhase.SECOND_HALF: 'SECOND_HALF'>, minute=45), type='no_goal', goal_player='Max', assist_player='Dario', player_assignments={'atk_1': 'Max', 'atk_2': 'Dario', 'atk_3': 'Dav', 'atk_4': 'Dani', 'atk_goalkeeper': 'Kien', 'def_1': 'Pit', 'def_2': 'Giammy', 'def_3': 'Paso', 'def_4': 'Stef', 'def_goalkeeper': 'Gio'}, support_assignments={'referee': 'Yassim Parziale', 'stadium': 'Server di Forgiacraft IV', 'atk_team_name': 'FORGIA', 'def_team_name': 'PASTA'}, penalty=None, var_review=False)
+MatchAction(team_atk_id=0, time=MatchTime(phase=<MatchPhase.SECOND_HALF: 'SECOND_HALF'>, minute=46), type='no_goal', goal_player='Dav', assist_player='Dani', player_assignments={'atk_1': 'Dav', 'atk_2': 'Dani', 'atk_3': 'Dario', 'atk_4': 'Max', 'atk_goalkeeper': 'Kien', 'def_1': 'Giammy', 'def_2': 'Pit', 'def_3': 'Paso', 'def_4': 'Stef', 'def_goalkeeper': 'Gio'}, support_assignments={'referee': 'Yassim Parziale', 'stadium': 'Server di Forgiacraft IV', 'atk_team_name': 'FORGIA', 'def_team_name': 'PASTA'}, penalty=None, var_review=False)
+MatchAction(team_atk_id=0, time=MatchTime(phase=<MatchPhase.SECOND_HALF: 'SECOND_HALF'>, minute=47), type='no_goal', goal_player='Dario', assist_player='Dani', player_assignments={'atk_1': 'Dario', 'atk_2': 'Dani', 'atk_3': 'Max', 'atk_4': 'Dav', 'atk_goalkeeper': 'Kien', 'def_1': 'Paso', 'def_2': 'Stef', 'def_3': 'Pit', 'def_4': 'Giammy', 'def_goalkeeper': 'Gio'}, support_assignments={'referee': 'Yassim Parziale', 'stadium': 'Server di Forgiacraft IV', 'atk_team_name': 'FORGIA', 'def_team_name': 'PASTA'}, penalty=None, var_review=False)

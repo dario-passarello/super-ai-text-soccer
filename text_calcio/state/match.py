@@ -5,6 +5,7 @@ from typing import Any, Literal, Optional, cast
 
 import attr
 import cattrs
+import yaml
 import numpy as np
 
 from text_calcio.loaders.action import ActionBlueprint, ActionRequest
@@ -228,7 +229,14 @@ class Match(Serializable):
         if outcome_decided:
             return attr.evolve(self, finished=True)
 
-        penalty_blueprint = ActionBlueprint("penalty", False, [], {}, None, None)
+        penalty_blueprint = ActionBlueprint(
+            action_type="penalty",
+            use_var=False,
+            phrases=[],
+            player_evaluation={},
+            scorer_player=None,
+            assist_player=None,
+        )
 
         new_action = MatchAction(
             team_atk_id=current_kicking_team,
@@ -239,7 +247,7 @@ class Match(Serializable):
             player_assignments=player_assignments,
             support_assignments=support_assignments,
             penalty=None,
-            var_review=var_review,
+            var_review=False,
         )
 
         return attr.evolve(self, actions=self.actions + (new_action,))
@@ -283,16 +291,21 @@ class Match(Serializable):
                 )
 
     def handle_second_half_end(self):
-        if self.config.tie_breaker == "allow_tie":
-            return attr.evolve(self, finished=True)
-        elif self.is_tie():
-            if self.config.tie_breaker == "on_tie_extra_time_and_penalties":
+        match (self.is_tie(), self.config.tie_breaker):
+            case (False, _):
+                return attr.evolve(self, finished=True)
+            case (True, "allow_tie"):
+                return attr.evolve(self, finished=True)
+            case (True, "on_tie_extra_time_and_penalties"):
                 next_phase = MatchPhase.FIRST_EXTRA_TIME
-            else:  # on_tie_penalties
+                return attr.evolve(self, game_clock=MatchTime(next_phase, 1))
+            case (True, "on_tie_penalties"):
                 next_phase = MatchPhase.PENALTIES
-            return attr.evolve(self, game_clock=MatchTime(next_phase, 1))
-        else:
-            return attr.evolve(self, finished=True)
+                return attr.evolve(self, game_clock=MatchTime(next_phase, 1))
+            case _:
+                raise ValueError(
+                    f"Unexpected tie_breaker value: {self.config.tie_breaker}"
+                )
 
     def handle_extra_time_end(self):
         if self.is_tie():
@@ -460,6 +473,18 @@ class Match(Serializable):
     @classmethod
     def deserialize(cls, data: dict[str, Any]):
         return cattrs.structure(data, cls)
+
+    def to_yaml(self):
+        return yaml.dump(self.serialize())
+
+    def save_to_file(self, file_path="match.yaml"):
+        with open(file_path, "w") as f:
+            f.write(self.to_yaml())
+
+    @classmethod
+    def load_from_file(cls, file_path="match.yaml"):
+        with open(file_path, "r") as f:
+            return Match.deserialize(yaml.safe_load(f))
 
     def __str__(self):
         score_string = f"{self.home_team.short_name} {self.get_score()[0]} - {self.get_score()[1]} {self.away_team.short_name}"
