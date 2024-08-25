@@ -5,11 +5,26 @@ from openai import OpenAI
 
 from tqdm import tqdm
 
+from collections import defaultdict
+
 client = OpenAI()
 
 
+class PlayerEvaluation(BaseModel):
+    player_placeholder: str
+    evaluation: int
+
+    class Config:
+        extra = "forbid"
+
+
 class CommentedAction(BaseModel):
-    action: list[str]
+    commented_action: list[str]
+    player_evaluations: list[PlayerEvaluation]
+    summary: str
+
+    class Config:
+        extra = "forbid"
 
 
 SYSTEM_PROMPT = """
@@ -32,8 +47,14 @@ SYSTEM_PROMPT = """
 </available-placeholders>
 
 <task>
-Generate 15-20 phrases per action, including 1-2 phrases on how the action began. 
-Use only the specified placeholders. Assume the game has already started.
+- Generate 15-20 phrases per action
+- Include 1-2 phrases on how the action began.
+- Describe the action in detail, including the players involved, the action type, and the outcome.
+- Use only the specified placeholders. 
+- Assume the game has already started.
+- Provide a short summary of the action.
+- Evaluate the performance of the players involved in the action.
+- Each evaluation should be a score from -3 to 3. E.g. 3 for a great performance, -3 for a poor performance. 0 if the player was not involved or had no impact.
 </task>
 """
 
@@ -56,6 +77,8 @@ Describe the next actions:
 class TestDisplay:
     current_minute = 0
     commented_actions: list[list[str]] = []
+    summaries: list[str] = []
+    player_evaluations: dict[str, int] = defaultdict(int)
 
     def __init__(self):
         pass
@@ -124,7 +147,7 @@ class TestDisplay:
                 match.get_score_at(action_minute),
                 action_minute,
                 action_phase,
-                "\n".join(str(action) for action in self.commented_actions),
+                "\n".join(self.summaries),
                 format_action(action),
             )
 
@@ -142,18 +165,36 @@ class TestDisplay:
             if response is None:
                 raise RuntimeError("Cannot parse API response")
 
-            self.commented_actions += [response.action]
+            self.commented_actions += [response.commented_action]
+            self.summaries += [response.summary]
+
+            # sum up all the evaluations per each player
+            for player_eval in response.player_evaluations:
+                self.player_evaluations[player_eval.player_placeholder] = (
+                    self.player_evaluations.get(player_eval.player_placeholder, 0)
+                    + player_eval.evaluation
+                )
+
+            print("Player evaluations:")
+
+            for player, evaluation in self.player_evaluations.items():
+                print(f"{player}: {evaluation}")
 
             print(
-                "\n".join(self.replace_placeholders(action, response.action)),
+                "\n".join(self.replace_placeholders(action, response.commented_action)),
                 end="\n\n\n",
             )
 
         input("Press enter to continue")
 
-        print(*("\n".join(ca) for ca in self.commented_actions), sep="\n\n\n")
+        for commented_action in self.commented_actions:
+            print("Summaries:")
+            print("\n".join(self.summaries), end="\n\n\n")
 
-        self.current_minute = match.get_absolute_minute()
+            print("Action:")
+            print("\n".join(commented_action), end="\n\n\n")
+
+        self.current_minute = match.get_absolute_minute() + 1
 
     def replace_placeholders(self, action: MatchAction, commented_action: list[str]):
         return [
